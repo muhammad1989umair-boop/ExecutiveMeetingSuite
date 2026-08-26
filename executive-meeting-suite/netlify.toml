@@ -1,0 +1,27 @@
+# Netlify Configuration for Frontend Deployment
+
+[build]
+command = "npm run build"
+publish = "dist"
+functions = "functions"
+
+[build.environment]
+NODE_VERSION = "18"
+NPM_VERSION = "9"
+
+# Environment variables (set these in Netlify dashboard)
+# VITE_API_URL = "https://your-heroku-backend.herokuapp.com"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+[context.production]
+environment = { VITE_API_URL = "https://your-backend.herokuapp.com" }
+
+[context.dev]
+environment = { VITE_API_URL = "http://localhost:5000" }
+
+[context.branch-deploy]
+environment = { VITE_API_URL = "https://your-staging-backend.herokuapp.com" }

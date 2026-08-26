@@ -25,9 +25,10 @@ const PORT = process.env.PORT || 5000;
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS - Allow requests from frontend
+const corsOrigin = process.env.CORS_ORIGIN || '*';
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://yourdomain.com' : '*',
+  origin: corsOrigin,
   credentials: true,
 }));
 

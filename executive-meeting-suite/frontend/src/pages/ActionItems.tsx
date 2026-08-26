@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../hooks/useAuth'
-import { CheckSquare, Filter, ChevronDown } from 'lucide-react'
+import { CheckSquare, Plus } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface ActionItem {
   id: string
@@ -19,6 +20,10 @@ export default function ActionItems() {
   const [filteredItems, setFilteredItems] = useState<ActionItem[]>([])
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [filterPriority, setFilterPriority] = useState('ALL')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [priority, setPriority] = useState('MEDIUM')
+  const [dueDate, setDueDate] = useState('')
   const { request, loading } = useApi()
   const { user } = useAuth()
 
@@ -29,8 +34,8 @@ export default function ActionItems() {
   const loadActionItems = async () => {
     try {
       const data = await request('GET', '/action-items')
-      setItems(data.actionItems)
-      setFilteredItems(data.actionItems)
+      setItems(data.actionItems || [])
+      setFilteredItems(data.actionItems || [])
     } catch (error) {
       console.error('Failed to load action items:', error)
     }
@@ -46,6 +51,38 @@ export default function ActionItems() {
     }
     setFilteredItems(filtered)
   }, [filterStatus, filterPriority, items])
+
+  const handleAddItem = async (e: any) => {
+    e.preventDefault?.()
+
+    if (!title || !title.trim()) {
+      toast.error('Title is required')
+      return
+    }
+
+    try {
+      const response = await request('POST', '/action-items', {
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        targetDate: dueDate || new Date().toISOString().split('T')[0],
+        meetingId: '46e0d600-4781-4fe0-9dfb-6fbcc2811879',
+        responsibleUserId: 'f7347db5-82f8-4d75-ad16-0e418fb4c6b7',
+        responsibleDivisionId: '3013ca42-1121-4e45-a4b8-df111478e08f'
+      })
+
+      toast.success('✅ Action item created!')
+      setTitle('')
+      setDescription('')
+      setPriority('MEDIUM')
+      setDueDate('')
+
+      setTimeout(() => loadActionItems(), 500)
+    } catch (error: any) {
+      console.error('API Error:', error?.response?.data || error)
+      toast.error(error?.response?.data?.error || 'Failed to create action item')
+    }
+  }
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -72,20 +109,63 @@ export default function ActionItems() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Action Items</h1>
-        <p className="text-slate-600">Track and manage all action items</p>
+        <p className="text-slate-600">Add new items below and manage all action items</p>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 bg-white rounded-lg shadow p-4">
-        <div className="flex items-center space-x-2">
-          <Filter className="w-4 h-4 text-slate-600" />
-          <span className="text-slate-600 font-semibold">Filters:</span>
+      {/* Add Item Form */}
+      {user?.role === 'CHIEF_OF_STAFF' && (
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">➕ Create New Action Item</h2>
+          <div className="grid grid-cols-12 gap-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+              placeholder="Title *"
+              className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+              placeholder="Description"
+              className="col-span-4 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            >
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <button
+              onClick={handleAddItem}
+              type="button"
+              className="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 font-semibold text-sm flex items-center justify-center transition"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+      )}
 
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 bg-white rounded-lg shadow p-4">
+        <span className="text-slate-600 font-semibold">Filter by:</span>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="ALL">All Status</option>
           <option value="OPEN">Open</option>
@@ -98,12 +178,12 @@ export default function ActionItems() {
         <select
           value={filterPriority}
           onChange={(e) => setFilterPriority(e.target.value)}
-          className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="ALL">All Priorities</option>
-          <option value="HIGH">High</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="LOW">Low</option>
+          <option value="HIGH">High Priority</option>
+          <option value="MEDIUM">Medium Priority</option>
+          <option value="LOW">Low Priority</option>
         </select>
       </div>
 
@@ -146,7 +226,7 @@ export default function ActionItems() {
                   <p className="text-xs">{new Date(item.target_date).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-slate-900">Due</p>
+                  <p className="font-semibold text-slate-900">Due In</p>
                   <p className="text-xs">{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</p>
                 </div>
               </div>
@@ -157,7 +237,7 @@ export default function ActionItems() {
             <CheckSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-600 text-lg">No action items found</p>
             {user?.role === 'CHIEF_OF_STAFF' && (
-              <p className="text-slate-500 text-sm mt-2">Create your first meeting to add action items</p>
+              <p className="text-slate-500 text-sm mt-2">Use the form above to create your first action item</p>
             )}
           </div>
         )}

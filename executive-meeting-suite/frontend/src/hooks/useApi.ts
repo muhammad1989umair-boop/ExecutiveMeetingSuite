@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:5000/api'
+// Use environment variable in production, localhost in development
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_BASE = `${API_URL}/api`
 
 export const useApi = () => {
   const [loading, setLoading] = useState(false)
