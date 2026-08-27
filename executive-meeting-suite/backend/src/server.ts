@@ -79,20 +79,54 @@ async function seedDemoData() {
     const bcryptjs = require('bcryptjs');
     const hashedPassword = await bcryptjs.hash('demo123', 10);
 
-    // Insert demo division
-    const division = await pool.query(
+    // Insert demo divisions
+    const execDiv = await pool.query(
       `INSERT INTO divisions (name, company, description)
        VALUES ('Executive Office', 'Novatex Limited', 'Chief of Staff Division')
-       RETURNING id`
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
     );
 
-    // Insert demo user
-    await pool.query(
-      `INSERT INTO users (email, password_hash, full_name, title, role, division_id, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, true)
-       ON CONFLICT (email) DO NOTHING`,
-      ['umair.ilyas@gatronova.com', hashedPassword, 'Chief of Staff', 'Chief of Staff', 'CHIEF_OF_STAFF', division.rows[0].id]
+    const marketingDiv = await pool.query(
+      `INSERT INTO divisions (name, company, description)
+       VALUES ('Marketing', 'Novatex Limited', 'Marketing Division')
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
     );
+
+    const supplyDiv = await pool.query(
+      `INSERT INTO divisions (name, company, description)
+       VALUES ('Supply Chain', 'Novatex Limited', 'Supply Chain Division')
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
+    );
+
+    const itDiv = await pool.query(
+      `INSERT INTO divisions (name, company, description)
+       VALUES ('Information Technology', 'Novatex Limited', 'IT Division')
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
+    );
+
+    const hrDiv = await pool.query(
+      `INSERT INTO divisions (name, company, description)
+       VALUES ('Human Resources', 'Novatex Limited', 'HR Division')
+       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
+    );
+
+    // Insert demo users
+    const users = [
+      ['umair.ilyas@gatronova.com', 'Chief of Staff', 'Chief of Staff', 'CHIEF_OF_STAFF', execDiv.rows[0].id],
+      ['marketing.head@gatronova.com', 'Marketing Head', 'Marketing Head', 'DIVISIONAL_HEAD', marketingDiv.rows[0].id],
+      ['supply.head@gatronova.com', 'Supply Chain Head', 'Supply Chain Head', 'DIVISIONAL_HEAD', supplyDiv.rows[0].id],
+      ['it.head@gatronova.com', 'IT Head', 'IT Head', 'DIVISIONAL_HEAD', itDiv.rows[0].id],
+      ['hr.head@gatronova.com', 'HR Head', 'HR Head', 'DIVISIONAL_HEAD', hrDiv.rows[0].id]
+    ];
+
+    for (const [email, fullName, title, role, divisionId] of users) {
+      await pool.query(
+        `INSERT INTO users (email, password_hash, full_name, title, role, division_id, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, true)
+         ON CONFLICT (email) DO NOTHING`,
+        [email, hashedPassword, fullName, title, role, divisionId]
+      );
+    }
 
     console.log('✓ Demo data seeded');
   } catch (error: any) {

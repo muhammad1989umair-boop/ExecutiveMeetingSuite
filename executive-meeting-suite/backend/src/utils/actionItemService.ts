@@ -5,14 +5,17 @@ import { AppError } from '../middleware/errorHandler'
 
 export const actionItemService = {
   async getAll(userId: string, role: string) {
-    // Get action items with responsible person details
+    // Get action items with responsible person and division details
     let query = `
       SELECT
-        ai.*,
-        u.full_name as responsible_person_name,
-        u.email as responsible_person_email
+        ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+        ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
+        ai.created_by, ai.created_at, ai.updated_at,
+        u.full_name, u.email,
+        d.name as division_name
       FROM action_items ai
       LEFT JOIN users u ON ai.responsible_person_id = u.id
+      LEFT JOIN divisions d ON u.division_id = d.id
       ORDER BY ai.target_date ASC
     `
     let params: any[] = []
@@ -21,11 +24,14 @@ export const actionItemService = {
     if (role !== 'CHIEF_OF_STAFF') {
       query = `
         SELECT
-          ai.*,
-          u.full_name as responsible_person_name,
-          u.email as responsible_person_email
+          ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+          ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
+          ai.created_by, ai.created_at, ai.updated_at,
+          u.full_name, u.email,
+          d.name as division_name
         FROM action_items ai
         LEFT JOIN users u ON ai.responsible_person_id = u.id
+        LEFT JOIN divisions d ON u.division_id = d.id
         WHERE ai.responsible_person_id = $1
         ORDER BY ai.target_date ASC
       `
@@ -39,11 +45,14 @@ export const actionItemService = {
   async getById(id: string) {
     const result = await pool.query(
       `SELECT
-        ai.*,
-        u.full_name as responsible_person_name,
-        u.email as responsible_person_email
+        ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+        ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
+        ai.created_by, ai.created_at, ai.updated_at,
+        u.full_name, u.email,
+        d.name as division_name
       FROM action_items ai
       LEFT JOIN users u ON ai.responsible_person_id = u.id
+      LEFT JOIN divisions d ON u.division_id = d.id
       WHERE ai.id = $1`,
       [id]
     )

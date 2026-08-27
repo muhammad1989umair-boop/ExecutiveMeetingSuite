@@ -27,10 +27,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/divisional-heads', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT id, email, full_name, title, role, division_id
-       FROM users
-       WHERE is_active = true AND (role = 'DIVISIONAL_HEAD' OR role = 'CHIEF_OF_STAFF')
-       ORDER BY full_name`
+      `SELECT u.id, u.email, u.full_name, u.title, u.role, u.division_id, d.name as division_name, d.company
+       FROM users u
+       LEFT JOIN divisions d ON u.division_id = d.id
+       WHERE u.is_active = true AND (u.role = 'DIVISIONAL_HEAD' OR u.role = 'CHIEF_OF_STAFF')
+       ORDER BY u.full_name`
     );
 
     res.json({

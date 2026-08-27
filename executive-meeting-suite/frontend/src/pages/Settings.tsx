@@ -1,51 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 
 interface DivisionalHead {
   id: string
-  name: string
-  title: string
   email: string
-  phone: string
-  divisionId: string
-  company: string
+  full_name: string
+  title: string
+  role: string
+  division_id: string
+}
+
+interface DivisionalHeadWithDetails extends DivisionalHead {
+  division_name?: string
+  company?: string
 }
 
 export default function Settings() {
-  const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHead[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    title: '',
-    email: '',
-    phone: '',
-    divisionId: ''
-  })
+  const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHeadWithDetails[]>([])
+  const [loading, setLoading] = useState(true)
   const { request } = useApi()
   const { user } = useAuth()
 
-  const handleAddHead = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await request('POST', '/divisional-heads/heads', formData)
-      toast.success('Divisional head added successfully!')
-      setShowForm(false)
-      setFormData({ name: '', title: '', email: '', phone: '', divisionId: '' })
-      loadHeads()
-    } catch (error) {
-      toast.error('Failed to add divisional head')
-    }
-  }
+  useEffect(() => {
+    loadHeads()
+  }, [])
 
   const loadHeads = async () => {
     try {
-      const data = await request('GET', '/divisional-heads/heads')
-      setDivisionalHeads(data.heads)
+      setLoading(true)
+      const data = await request('GET', '/users/divisional-heads')
+      const heads = data.users || []
+      setDivisionalHeads(heads)
     } catch (error) {
       console.error('Failed to load heads:', error)
+      toast.error('Failed to load divisional heads')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -62,122 +55,76 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600">Manage divisional heads and system configuration</p>
+        <p className="text-slate-600">Manage team members and system configuration</p>
       </div>
 
       {/* Divisional Heads Section */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center mb-6">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center space-x-2">
             <Users className="w-6 h-6" />
-            <span>Divisional Heads</span>
+            <span>Organization Divisional Heads</span>
           </h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center space-x-2 hover:shadow-lg transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Head</span>
-          </button>
+          <span className="ml-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+            {divisionalHeads.length} members
+          </span>
         </div>
 
-        {/* Add Form */}
-        {showForm && (
-          <form onSubmit={handleAddHead} className="mb-6 p-6 bg-slate-50 rounded-lg border-2 border-blue-200">
-            <h3 className="font-bold text-slate-900 mb-4">Add New Divisional Head</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Job Title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-              <input
-                type="tel"
-                placeholder="Phone Number"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex space-x-3 mt-4">
-              <button
-                type="submit"
-                className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                Add Divisional Head
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="bg-slate-200 text-slate-900 px-6 py-2 rounded-lg font-semibold hover:bg-slate-300 transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
+        <p className="text-slate-600 mb-6">
+          These divisional heads are available as responsible persons when creating action items.
+        </p>
 
         {/* Heads Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-700">
-            <thead className="bg-slate-50 border-b-2 border-slate-200">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Name</th>
-                <th className="px-4 py-3 font-semibold">Title</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold">Company</th>
-                <th className="px-4 py-3 font-semibold">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {divisionalHeads.length > 0 ? (
-                divisionalHeads.map((head) => (
-                  <tr key={head.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{head.name}</td>
-                    <td className="px-4 py-3">{head.title}</td>
-                    <td className="px-4 py-3">{head.email}</td>
-                    <td className="px-4 py-3">{head.company}</td>
-                    <td className="px-4 py-3">
-                      <button className="text-red-600 hover:text-red-700 font-semibold flex items-center space-x-1">
-                        <Trash2 className="w-4 h-4" />
-                        <span>Remove</span>
-                      </button>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600">Loading divisional heads...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-700">
+              <thead className="bg-slate-50 border-b-2 border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">S.No</th>
+                  <th className="px-4 py-3 font-semibold">Full Name</th>
+                  <th className="px-4 py-3 font-semibold">Title</th>
+                  <th className="px-4 py-3 font-semibold">Division</th>
+                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Company</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {divisionalHeads.length > 0 ? (
+                  divisionalHeads.map((head, index) => (
+                    <tr key={head.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{head.full_name}</td>
+                      <td className="px-4 py-3">{head.title}</td>
+                      <td className="px-4 py-3">{head.division_name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-blue-600">{head.email}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                          {head.company || 'Gatronova'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                      No divisional heads found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                    No divisional heads added yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        <p className="text-sm text-slate-500 mt-4">
-          💡 Tip: You can add or remove divisional heads at any time. They will automatically get access to action items assigned to them.
-        </p>
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-slate-700">
+          <p className="font-semibold mb-2">💡 Connected with Action Items</p>
+          <p>All divisional heads listed above are available in the "Select Responsible Person" dropdown when creating new action items.</p>
+        </div>
       </div>
     </div>
   )

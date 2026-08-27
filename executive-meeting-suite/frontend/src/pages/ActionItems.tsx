@@ -15,6 +15,15 @@ interface ActionItem {
   division_name: string
 }
 
+interface User {
+  id: string
+  email: string
+  full_name: string
+  title: string
+  role: string
+  division_id: string
+}
+
 export default function ActionItems() {
   const [items, setItems] = useState<ActionItem[]>([])
   const [filteredItems, setFilteredItems] = useState<ActionItem[]>([])
@@ -24,12 +33,27 @@ export default function ActionItems() {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('MEDIUM')
   const [dueDate, setDueDate] = useState('')
+  const [responsiblePersonId, setResponsiblePersonId] = useState('')
+  const [divisionalHeads, setDivisionalHeads] = useState<User[]>([])
   const { request, loading } = useApi()
   const { user } = useAuth()
 
   useEffect(() => {
     loadActionItems()
+    loadDivisionalHeads()
   }, [])
+
+  const loadDivisionalHeads = async () => {
+    try {
+      const data = await request('GET', '/users/divisional-heads')
+      setDivisionalHeads(data.users || [])
+      if (data.users && data.users.length > 0) {
+        setResponsiblePersonId(data.users[0].id)
+      }
+    } catch (error) {
+      console.error('Failed to load divisional heads:', error)
+    }
+  }
 
   const loadActionItems = async () => {
     try {
@@ -60,15 +84,19 @@ export default function ActionItems() {
       return
     }
 
+    if (!responsiblePersonId) {
+      toast.error('Please select a responsible person')
+      return
+    }
+
     try {
       const response = await request('POST', '/action-items', {
         title: title.trim(),
         description: description.trim(),
         priority,
-        targetDate: dueDate || new Date().toISOString().split('T')[0],
-        meetingId: '46e0d600-4781-4fe0-9dfb-6fbcc2811879',
-        responsibleUserId: 'f7347db5-82f8-4d75-ad16-0e418fb4c6b7',
-        responsibleDivisionId: '3013ca42-1121-4e45-a4b8-df111478e08f'
+        target_date: dueDate || new Date().toISOString().split('T')[0],
+        meeting_id: '46e0d600-4781-4fe0-9dfb-6fbcc2811879',
+        responsible_person_id: responsiblePersonId
       })
 
       toast.success('✅ Action item created!')
@@ -76,6 +104,9 @@ export default function ActionItems() {
       setDescription('')
       setPriority('MEDIUM')
       setDueDate('')
+      if (divisionalHeads.length > 0) {
+        setResponsiblePersonId(divisionalHeads[0].id)
+      }
 
       setTimeout(() => loadActionItems(), 500)
     } catch (error: any) {
@@ -116,45 +147,64 @@ export default function ActionItems() {
       {user?.role === 'CHIEF_OF_STAFF' && (
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
           <h2 className="text-lg font-bold text-slate-900 mb-4">➕ Create New Action Item</h2>
-          <div className="grid grid-cols-12 gap-3">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
-              placeholder="Title *"
-              className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
-              placeholder="Description"
-              className="col-span-4 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="HIGH">High</option>
-            </select>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-            <button
-              onClick={handleAddItem}
-              type="button"
-              className="col-span-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 font-semibold text-sm flex items-center justify-center transition"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
+          <div className="space-y-3">
+            <div className="grid grid-cols-12 gap-3">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+                placeholder="Title *"
+                className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+                placeholder="Description"
+                className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="col-span-2 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <button
+                onClick={handleAddItem}
+                type="button"
+                className="col-span-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 font-semibold text-sm flex items-center justify-center transition"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Create
+              </button>
+            </div>
+            <div className="grid grid-cols-12 gap-3">
+              <select
+                value={responsiblePersonId}
+                onChange={(e) => setResponsiblePersonId(e.target.value)}
+                className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Select Responsible Person *</option>
+                {divisionalHeads.map((head) => (
+                  <option key={head.id} value={head.id}>
+                    {head.full_name} {head.title ? `- ${head.title}` : ''} ({head.role})
+                  </option>
+                ))}
+              </select>
+              <div className="col-span-6 text-xs text-slate-500 pt-2">
+                Assign this action item to a team lead or divisional head
+              </div>
+            </div>
           </div>
         </div>
       )}
