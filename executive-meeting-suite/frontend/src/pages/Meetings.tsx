@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { Plus, Calendar, MapPin, Users, X } from 'lucide-react'
+import { Plus, Calendar, MapPin, Users, X, Trash2 } from 'lucide-react'
 
 interface Meeting {
   id: string
@@ -93,6 +93,18 @@ export default function Meetings() {
 
   const removeParticipant = (index: number) => {
     setAddedParticipants(addedParticipants.filter((_, i) => i !== index))
+  }
+
+  const handleDeleteMeeting = async (id: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete the meeting "${title}"? This will also delete all associated action items.`)) {
+      try {
+        await request('DELETE', `/meetings/${id}`)
+        toast.success('Meeting deleted successfully!')
+        loadMeetings()
+      } catch (error) {
+        toast.error('Failed to delete meeting')
+      }
+    }
   }
 
   return (
@@ -282,10 +294,27 @@ export default function Meetings() {
           meetings.map((meeting) => (
             <div
               key={meeting.id}
-              onClick={() => navigate(`/meetings/${meeting.id}`)}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer group"
+              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group relative"
             >
-              <div className="flex justify-between items-start mb-4">
+              {/* Delete Button (Admin Only) */}
+              {user?.role === 'CHIEF_OF_STAFF' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteMeeting(meeting.id, meeting.title)
+                  }}
+                  className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  title="Delete meeting"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+
+              <div
+                onClick={() => navigate(`/meetings/${meeting.id}`)}
+                className="cursor-pointer"
+              >
+                <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
@@ -319,6 +348,7 @@ export default function Meetings() {
                   <Users className="w-4 h-4" />
                   <span>{meeting.attendees?.length || 0} attendees</span>
                 </div>
+              </div>
               </div>
             </div>
           ))

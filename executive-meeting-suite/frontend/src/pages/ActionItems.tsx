@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../hooks/useAuth'
-import { CheckSquare, Plus } from 'lucide-react'
+import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ActionItem {
@@ -137,6 +137,18 @@ export default function ActionItems() {
     return colors[priority] || 'text-slate-600'
   }
 
+  const handleDeleteItem = async (id: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete the action item "${title}"?`)) {
+      try {
+        await request('DELETE', `/action-items/${id}`)
+        toast.success('Action item deleted successfully!')
+        loadActionItems()
+      } catch (error) {
+        toast.error('Failed to delete action item')
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -250,9 +262,24 @@ export default function ActionItems() {
           filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 cursor-pointer group"
+              className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 group relative"
             >
-              <div className="flex justify-between items-start mb-3">
+              {/* Delete Button (Admin Only) */}
+              {user?.role === 'CHIEF_OF_STAFF' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteItem(item.id, item.title)
+                  }}
+                  className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                  title="Delete action item"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+
+              <div className="cursor-pointer" onClick={() => {}}>
+                <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     {item.meeting_number && (
@@ -290,6 +317,7 @@ export default function ActionItems() {
                   <p className="font-semibold text-slate-900">Due In</p>
                   <p className="text-xs">{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</p>
                 </div>
+              </div>
               </div>
             </div>
           ))

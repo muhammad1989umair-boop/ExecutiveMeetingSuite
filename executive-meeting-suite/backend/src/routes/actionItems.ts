@@ -210,4 +210,23 @@ router.get('/:id/responses', authenticate, async (req: Request, res: Response) =
   }
 });
 
+// Delete action item (admin only)
+router.delete('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM action_items WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Action item not found' });
+    }
+
+    res.json({ message: 'Action item deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting action item:', error);
+    res.status(500).json({ error: 'Failed to delete action item' });
+  }
+});
+
 export default router;
