@@ -9,14 +9,14 @@ export const actionItemService = {
     let query = `
       SELECT
         ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
-        ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
+        ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
         ai.created_by, ai.created_at, ai.updated_at,
         u.full_name, u.email,
         d.name as division_name,
         m.meeting_number, m.title as meeting_title
       FROM action_items ai
-      LEFT JOIN users u ON ai.responsible_person_id = u.id
-      LEFT JOIN divisions d ON u.division_id = d.id
+      LEFT JOIN users u ON ai.responsible_user_id = u.id
+      LEFT JOIN divisions d ON ai.responsible_division_id = d.id
       LEFT JOIN meetings m ON ai.meeting_id = m.id
       ORDER BY ai.target_date ASC
     `

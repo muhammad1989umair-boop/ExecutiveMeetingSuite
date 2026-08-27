@@ -83,10 +83,16 @@ Chief of Staff
 // Get action items
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    let query = `SELECT ai.*, u.full_name, u.email, d.name as division_name
+    let query = `SELECT ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+                        ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
+                        ai.created_by, ai.created_at, ai.updated_at,
+                        u.full_name, u.email,
+                        d.name as division_name,
+                        m.meeting_number, m.title as meeting_title
                  FROM action_items ai
                  JOIN users u ON ai.responsible_user_id = u.id
-                 JOIN divisions d ON ai.responsible_division_id = d.id`;
+                 JOIN divisions d ON ai.responsible_division_id = d.id
+                 LEFT JOIN meetings m ON ai.meeting_id = m.id`;
     const params: any[] = [];
 
     // If user is a divisional head, only show their items
@@ -111,10 +117,16 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT ai.*, u.full_name, u.email, d.name as division_name
+      `SELECT ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+              ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
+              ai.created_by, ai.created_at, ai.updated_at,
+              u.full_name, u.email,
+              d.name as division_name,
+              m.meeting_number, m.title as meeting_title
        FROM action_items ai
        JOIN users u ON ai.responsible_user_id = u.id
        JOIN divisions d ON ai.responsible_division_id = d.id
+       LEFT JOIN meetings m ON ai.meeting_id = m.id
        WHERE ai.id = $1`,
       [req.params.id]
     );
