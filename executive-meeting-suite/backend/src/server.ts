@@ -12,6 +12,7 @@ import meetingRoutes from './routes/meetings';
 import actionItemRoutes from './routes/actionItems';
 import usersRoutes from './routes/users';
 import dashboardRoutes from './routes/dashboard';
+import masterDataRoutes from './routes/masterData';
 
 dotenv.config();
 
@@ -168,6 +169,7 @@ app.use('/api/meetings', meetingRoutes);
 app.use('/api/action-items', actionItemRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/master-data', masterDataRoutes);
 
 // ============================================================================
 // STATIC FILES (Frontend)
