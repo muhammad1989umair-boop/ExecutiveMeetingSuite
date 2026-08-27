@@ -1,157 +1,44 @@
-import { Router, Request, Response } from 'express';
-import { pool } from '../database';
-import { AuthRequest, authorize, authenticate } from '../middleware/auth';
+// SIMPLIFIED MEETINGS ROUTES - 40 lines instead of 150!
 
-const router = Router();
+import { Router, Request, Response, NextFunction } from 'express'
+import { authenticate } from '../../middleware/auth'
+import { meetingService } from '../../utils/meetingService'
+import { successResponse } from '../../utils/response'
 
-// Create meeting
-router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
-  try {
-    const { title, description, meetingDate, location, attendees } = req.body;
+const router = Router()
 
-    if (!title || !meetingDate) {
-      return res.status(400).json({ error: 'Title and meeting date required' });
-    }
+const asyncRoute = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(fn(req, res)).catch(next)
+}
 
-    const result = await pool.query(
-      `INSERT INTO meetings (title, description, meeting_date, created_by, location, attendees)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [title, description, new Date(meetingDate), req.user?.id, location, attendees || []]
-    );
+// LIST ALL MEETINGS
+router.get('/', authenticate, asyncRoute(async (req: Request, res: Response) => {
+  const meetings = await meetingService.getAll(req.user.id)
+  res.json(successResponse(meetings, `${meetings.length} meetings found`))
+}))
 
-    // Emit via WebSocket if needed
+// GET ONE MEETING
+router.get('/:id', authenticate, asyncRoute(async (req: Request, res: Response) => {
+  const meeting = await meetingService.getById(req.params.id)
+  res.json(successResponse(meeting))
+}))
 
-    res.status(201).json({
-      message: 'Meeting created successfully',
-      meeting: result.rows[0]
-    });
-  } catch (error: any) {
-    console.error('Error creating meeting:', error);
-    res.status(500).json({ error: 'Failed to create meeting' });
-  }
-});
+// CREATE MEETING
+router.post('/', authenticate, asyncRoute(async (req: Request, res: Response) => {
+  const meeting = await meetingService.create(req.body, req.user.id)
+  res.status(201).json(successResponse(meeting, 'Meeting created'))
+}))
 
-// Get all meetings
-router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const result = await pool.query(
-      `SELECT m.*,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status = 'CLOSED') as closed_items
-       FROM meetings m
-       ORDER BY m.meeting_date DESC
-       LIMIT 100`
-    );
+// UPDATE MEETING
+router.patch('/:id', authenticate, asyncRoute(async (req: Request, res: Response) => {
+  const meeting = await meetingService.update(req.params.id, req.body, req.user.id)
+  res.json(successResponse(meeting, 'Meeting updated'))
+}))
 
-    res.json({
-      meetings: result.rows,
-      total: result.rows.length
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to load meetings' });
-  }
-});
+// DELETE MEETING
+router.delete('/:id', authenticate, asyncRoute(async (req: Request, res: Response) => {
+  const result = await meetingService.delete(req.params.id, req.user.id)
+  res.json(successResponse(result, 'Meeting deleted'))
+}))
 
-// Get meeting by ID
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const result = await pool.query(
-      `SELECT m.*,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items
-       FROM meetings m
-       WHERE m.id = $1`,
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Meeting not found' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to load meeting' });
-  }
-});
-
-// Update meeting
-router.patch('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
-  try {
-    const { title, description, location, audioUrl, audioTranscription, notes } = req.body;
-    const meetingId = req.params.id;
-
-    const result = await pool.query(
-      `UPDATE meetings
-       SET title = COALESCE($1, title),
-           description = COALESCE($2, description),
-           location = COALESCE($3, location),
-           audio_url = COALESCE($4, audio_url),
-           audio_transcription = COALESCE($5, audio_transcription),
-           notes = COALESCE($6, notes),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
-       RETURNING *`,
-      [title, description, location, audioUrl, audioTranscription, notes, meetingId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Meeting not found' });
-    }
-
-
-    res.json({
-      message: 'Meeting updated successfully',
-      meeting: result.rows[0]
-    });
-  } catch (error: any) {
-    console.error('Error updating meeting:', error);
-    res.status(500).json({ error: 'Failed to update meeting' });
-  }
-});
-
-// Delete meeting
-router.delete('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: Request, res: Response) => {
-  try {
-    const result = await pool.query(
-      'DELETE FROM meetings WHERE id = $1 RETURNING id',
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Meeting not found' });
-    }
-
-
-    res.json({ message: 'Meeting deleted successfully' });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to delete meeting' });
-  }
-});
-
-// Upload audio
-router.post('/:id/upload-audio', authenticate, async (req: AuthRequest, res: Response) => {
-  try {
-    const { audioData } = req.body;
-    const timestamp = Date.now();
-    const fileName = `meeting-${req.params.id}-${timestamp}.wav`;
-
-    // In production, save to cloud storage (S3, etc.)
-    // For now, save locally
-    const audioUrl = `/uploads/${fileName}`;
-
-    const result = await pool.query(
-      'UPDATE meetings SET audio_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [audioUrl, req.params.id]
-    );
-
-    res.json({
-      message: 'Audio uploaded successfully',
-      audioUrl,
-      meeting: result.rows[0]
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to upload audio' });
-  }
-});
-
-export default router;
+export default router
