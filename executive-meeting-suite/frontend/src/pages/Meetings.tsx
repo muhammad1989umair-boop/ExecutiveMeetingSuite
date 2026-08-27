@@ -28,13 +28,14 @@ interface DivisionalHead {
 export default function Meetings() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [showParticipantModal, setShowParticipantModal] = useState(false)
   const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHead[]>([])
+  const [selectedParticipants, setSelectedParticipants] = useState<DivisionalHead[]>([])
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     meetingDate: '',
-    location: '',
-    participants: [] as string[]
+    location: ''
   })
   const navigate = useNavigate()
   const { request, loading } = useApi()
@@ -65,34 +66,38 @@ export default function Meetings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.participants.length === 0) {
-      toast.error('Please select at least one participant')
+    if (selectedParticipants.length === 0) {
+      toast.error('Please add at least one participant')
       return
     }
     try {
+      const participantIds = selectedParticipants.map(p => p.id)
       await request('POST', '/meetings', {
         title: formData.title,
         description: formData.description,
         meetingDate: formData.meetingDate,
         location: formData.location,
-        participants: formData.participants
+        participants: participantIds
       })
       toast.success('Meeting created successfully!')
       setShowForm(false)
-      setFormData({ title: '', description: '', meetingDate: '', location: '', participants: [] })
+      setFormData({ title: '', description: '', meetingDate: '', location: '' })
+      setSelectedParticipants([])
       loadMeetings()
     } catch (error) {
       toast.error('Failed to create meeting')
     }
   }
 
-  const toggleParticipant = (headId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      participants: prev.participants.includes(headId)
-        ? prev.participants.filter(id => id !== headId)
-        : [...prev.participants, headId]
-    }))
+  const addParticipant = (head: DivisionalHead) => {
+    if (!selectedParticipants.find(p => p.id === head.id)) {
+      setSelectedParticipants([...selectedParticipants, head])
+    }
+    setShowParticipantModal(false)
+  }
+
+  const removeParticipant = (headId: string) => {
+    setSelectedParticipants(selectedParticipants.filter(p => p.id !== headId))
   }
 
   return (
@@ -150,37 +155,86 @@ export default function Meetings() {
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
             ></textarea>
 
-            {/* Participants Selection */}
+            {/* Participants Section */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-slate-900">
-                Participants <span className="text-red-500">*</span>
-              </label>
-              <div className="bg-slate-50 rounded-lg border border-slate-300 p-4 max-h-48 overflow-y-auto">
-                {divisionalHeads.length > 0 ? (
-                  <div className="space-y-2">
-                    {divisionalHeads.map((head) => (
-                      <label key={head.id} className="flex items-center space-x-2 cursor-pointer hover:bg-slate-100 p-2 rounded">
-                        <input
-                          type="checkbox"
-                          checked={formData.participants.includes(head.id)}
-                          onChange={() => toggleParticipant(head.id)}
-                          className="w-4 h-4 rounded border-slate-300 focus:ring-2 focus:ring-blue-500"
-                        />
-                        <div className="flex-1">
-                          <p className="font-medium text-slate-900">{head.full_name}</p>
-                          <p className="text-xs text-slate-500">{head.division_name} - {head.company}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-sm">Loading participants...</p>
-                )}
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-semibold text-slate-900">
+                  Participants <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowParticipantModal(true)}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center space-x-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Participant</span>
+                </button>
               </div>
-              <p className="text-xs text-slate-500">
-                Selected: {formData.participants.length} participant{formData.participants.length !== 1 ? 's' : ''}
-              </p>
+
+              {/* Added Participants List */}
+              {selectedParticipants.length > 0 ? (
+                <div className="bg-slate-50 rounded-lg border border-slate-300 p-4 space-y-2">
+                  {selectedParticipants.map((participant) => (
+                    <div key={participant.id} className="flex justify-between items-start bg-white p-3 rounded border border-slate-200">
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{participant.full_name}</p>
+                        <p className="text-sm text-slate-600">{participant.title}</p>
+                        <p className="text-xs text-slate-500">{participant.company}</p>
+                        <p className="text-xs text-slate-500">{participant.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(participant.id)}
+                        className="text-red-500 hover:text-red-700 ml-4"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-lg border border-slate-300 p-4 text-center text-slate-500 text-sm">
+                  No participants added yet. Click "Add Participant" to get started.
+                </div>
+              )}
             </div>
+
+            {/* Participant Selection Modal */}
+            {showParticipantModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-96 overflow-y-auto">
+                  <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-900">Select Participant</h3>
+                    <button
+                      onClick={() => setShowParticipantModal(false)}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    {divisionalHeads.length > 0 ? (
+                      divisionalHeads
+                        .filter(head => !selectedParticipants.find(p => p.id === head.id))
+                        .map((head) => (
+                          <button
+                            key={head.id}
+                            type="button"
+                            onClick={() => addParticipant(head)}
+                            className="w-full text-left p-3 hover:bg-blue-50 rounded border border-slate-200 hover:border-blue-300 transition-colors"
+                          >
+                            <p className="font-semibold text-slate-900">{head.full_name}</p>
+                            <p className="text-sm text-slate-600">{head.title}</p>
+                            <p className="text-xs text-slate-500">{head.company} | {head.email}</p>
+                          </button>
+                        ))
+                    ) : (
+                      <p className="text-slate-500 text-sm">Loading participants...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex space-x-3">
               <button
