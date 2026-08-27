@@ -13,6 +13,8 @@ interface ActionItem {
   target_date: string
   full_name: string
   division_name: string
+  meeting_number?: number
+  meeting_title?: string
 }
 
 interface User {
@@ -251,9 +253,18 @@ export default function ActionItems() {
               className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex-1">
-                  {item.title}
-                </h3>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    {item.meeting_number && (
+                      <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
+                        Meeting #{item.meeting_number}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                    {item.title}
+                  </h3>
+                </div>
                 <div className="flex items-center space-x-3">
                   <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(item.status)}`}>
                     {item.status}

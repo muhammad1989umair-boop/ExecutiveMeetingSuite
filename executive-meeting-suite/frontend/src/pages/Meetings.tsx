@@ -7,6 +7,7 @@ import { Plus, Calendar, MapPin, Users, X } from 'lucide-react'
 
 interface Meeting {
   id: string
+  meeting_number: number
   title: string
   description: string
   meeting_date: string
@@ -285,9 +286,16 @@ export default function Meetings() {
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                  {meeting.title}
-                </h3>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      {meeting.title}
+                    </h3>
+                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                      ID: {meeting.meeting_number}
+                    </span>
+                  </div>
+                </div>
                 <div className="flex space-x-2">
                   <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
                     {meeting.open_items || 0} Open

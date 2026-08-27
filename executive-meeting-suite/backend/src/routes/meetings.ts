@@ -39,7 +39,8 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT m.*,
+      `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
+              m.created_by, m.created_at, m.updated_at,
         (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items,
         (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status = 'CLOSED') as closed_items
        FROM meetings m
@@ -60,8 +61,10 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT m.*,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items
+      `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
+              m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
+        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items,
+        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status = 'CLOSED') as closed_items
        FROM meetings m
        WHERE m.id = $1`,
       [req.params.id]

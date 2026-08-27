@@ -12,10 +12,12 @@ export const actionItemService = {
         ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
         ai.created_by, ai.created_at, ai.updated_at,
         u.full_name, u.email,
-        d.name as division_name
+        d.name as division_name,
+        m.meeting_number, m.title as meeting_title
       FROM action_items ai
       LEFT JOIN users u ON ai.responsible_person_id = u.id
       LEFT JOIN divisions d ON u.division_id = d.id
+      LEFT JOIN meetings m ON ai.meeting_id = m.id
       ORDER BY ai.target_date ASC
     `
     let params: any[] = []
@@ -28,10 +30,12 @@ export const actionItemService = {
           ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
           ai.created_by, ai.created_at, ai.updated_at,
           u.full_name, u.email,
-          d.name as division_name
+          d.name as division_name,
+          m.meeting_number, m.title as meeting_title
         FROM action_items ai
         LEFT JOIN users u ON ai.responsible_person_id = u.id
         LEFT JOIN divisions d ON u.division_id = d.id
+        LEFT JOIN meetings m ON ai.meeting_id = m.id
         WHERE ai.responsible_person_id = $1
         ORDER BY ai.target_date ASC
       `
@@ -49,10 +53,12 @@ export const actionItemService = {
         ai.target_date, ai.responsible_person_id, ai.division_id, ai.company_id,
         ai.created_by, ai.created_at, ai.updated_at,
         u.full_name, u.email,
-        d.name as division_name
+        d.name as division_name,
+        m.meeting_number, m.title as meeting_title
       FROM action_items ai
       LEFT JOIN users u ON ai.responsible_person_id = u.id
       LEFT JOIN divisions d ON u.division_id = d.id
+      LEFT JOIN meetings m ON ai.meeting_id = m.id
       WHERE ai.id = $1`,
       [id]
     )
