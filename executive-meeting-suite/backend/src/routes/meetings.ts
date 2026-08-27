@@ -41,9 +41,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const result = await pool.query(
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
               m.created_by, m.created_at, m.updated_at,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status = 'CLOSED') as closed_items
+              COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
+              COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
+       LEFT JOIN action_items ai ON m.id = ai.meeting_id
+       GROUP BY m.id
        ORDER BY m.meeting_date DESC
        LIMIT 100`
     );
@@ -58,15 +60,17 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 });
 
 // Get meeting by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
               m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status != 'CLOSED') as open_items,
-        (SELECT COUNT(*) FROM action_items WHERE meeting_id = m.id AND status = 'CLOSED') as closed_items
+              COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
+              COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
-       WHERE m.id = $1`,
+       LEFT JOIN action_items ai ON m.id = ai.meeting_id
+       WHERE m.id = $1
+       GROUP BY m.id`,
       [req.params.id]
     );
 

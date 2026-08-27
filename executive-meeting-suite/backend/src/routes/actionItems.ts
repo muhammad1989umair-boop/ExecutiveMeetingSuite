@@ -38,7 +38,7 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
     const userResult = await pool.query('SELECT email, full_name FROM users WHERE id = $1', [responsibleUserId]);
     const responsible = userResult.rows[0];
 
-    // Send email (fire and forget)
+    // Send email asynchronously (non-blocking)
     if (responsible) {
       const emailBody = `
 Dear ${responsible.full_name},
@@ -56,18 +56,28 @@ Best regards,
 Chief of Staff
       `;
 
-      transporter.sendMail({
-        from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
-        to: responsible.email,
-        subject: `Action Item: ${title}`,
-        text: emailBody
-      }).catch((err: any) => console.error('Email send error:', err));
+      // Send email without awaiting, but handle errors properly
+      (async () => {
+        try {
+          await transporter.sendMail({
+            from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
+            to: responsible.email,
+            subject: `Action Item: ${title}`,
+            text: emailBody
+          });
 
-      // Log email
-      await pool.query(
-        'INSERT INTO email_logs (action_item_id, recipient_email, subject, status) VALUES ($1, $2, $3, $4)',
-        [actionItem.id, responsible.email, `Action Item: ${title}`, 'SENT']
-      ).catch((err: any) => console.error('Email log error:', err));
+          await pool.query(
+            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status) VALUES ($1, $2, $3, $4)',
+            [actionItem.id, responsible.email, `Action Item: ${title}`, 'SENT']
+          );
+        } catch (err: any) {
+          console.error('Email send error:', err);
+          pool.query(
+            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status, error_message) VALUES ($1, $2, $3, $4, $5)',
+            [actionItem.id, responsible.email, `Action Item: ${title}`, 'FAILED', err.message]
+          ).catch(() => {});
+        }
+      })();
     }
 
     res.status(201).json({

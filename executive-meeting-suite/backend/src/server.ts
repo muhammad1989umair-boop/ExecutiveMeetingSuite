@@ -23,10 +23,24 @@ const PORT = process.env.PORT || 5000;
 // ============================================================================
 
 // Security headers
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+}));
 
-// CORS - Allow requests from frontend
-const corsOrigin = process.env.CORS_ORIGIN || '*';
+// CORS - Require explicit origin configuration
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  console.error('FATAL: CORS_ORIGIN not configured');
+  process.exit(1);
+}
 app.use(cors({
   origin: corsOrigin,
   credentials: true,

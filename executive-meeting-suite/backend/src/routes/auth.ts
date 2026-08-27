@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../database';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -10,6 +10,19 @@ interface LoginRequest {
   email: string;
   password: string;
 }
+
+const validatePassword = (password: string): { valid: boolean; error?: string } => {
+  if (password.length < 8) {
+    return { valid: false, error: 'Password must be at least 8 characters' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, error: 'Password must contain uppercase letter' };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, error: 'Password must contain number' };
+  }
+  return { valid: true };
+};
 
 // Login endpoint
 router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) => {
@@ -39,6 +52,11 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
       return;
     }
 
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const token = jwt.sign(
       {
         id: user.id,
@@ -46,7 +64,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
         role: user.role,
         divisionId: user.division_id
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      secret,
       { expiresIn: '7d' }
     );
 
@@ -66,14 +84,19 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
   }
 });
 
-// Register endpoint (for initial setup by Chief of Staff)
-router.post('/register', async (req: Request, res: Response) => {
+// Register endpoint (Chief of Staff only)
+router.post('/register', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, fullName, title, role, divisionId } = req.body;
 
     if (!email || !password || !fullName) {
       res.status(400).json({ error: 'Email, password, and full name required' });
       return;
+    }
+
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) {
+      return res.status(400).json({ error: passwordCheck.error });
     }
 
     const hashedPassword = await bcryptjs.hash(password, 10);
@@ -86,6 +109,11 @@ router.post('/register', async (req: Request, res: Response) => {
     );
 
     const user = result.rows[0];
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const token = jwt.sign(
       {
         id: user.id,
@@ -93,7 +121,7 @@ router.post('/register', async (req: Request, res: Response) => {
         role: user.role,
         divisionId: user.division_id
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      secret,
       { expiresIn: '7d' }
     );
 

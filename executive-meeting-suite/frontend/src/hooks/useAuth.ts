@@ -17,8 +17,8 @@ export const useAuth = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
+    const token = sessionStorage.getItem('token')
+    const storedUser = sessionStorage.getItem('user')
 
     if (token && storedUser) {
       setUser(JSON.parse(storedUser))
@@ -36,8 +36,8 @@ export const useAuth = () => {
       })
 
       const { token, user } = response.data
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
+      sessionStorage.setItem('token', token)
+      sessionStorage.setItem('user', JSON.stringify(user))
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       setUser(user)
       setIsAuthenticated(true)
@@ -50,8 +50,8 @@ export const useAuth = () => {
   }, [navigate])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     delete axios.defaults.headers.common['Authorization']
     setUser(null)
     setIsAuthenticated(false)

@@ -18,7 +18,12 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     }
 
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('FATAL: JWT_SECRET not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const decoded = jwt.verify(token, secret) as any;
 
     req.user = {
       id: decoded.id,
