@@ -30,7 +30,8 @@ export const useAuth = () => {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const apiUrl = `${window.location.protocol}//${window.location.host}/api/auth/login`
+      const response = await axios.post(apiUrl, {
         email,
         password
       })
