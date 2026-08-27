@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 
 interface ActionItem {
   id: string
+  action_item_number?: number
   title: string
   description: string
   status: string
@@ -282,6 +283,11 @@ export default function ActionItems() {
                 <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
+                    {item.action_item_number && (
+                      <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
+                        AI#{item.action_item_number}
+                      </span>
+                    )}
                     {item.meeting_number && (
                       <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
                         Meeting #{item.meeting_number}

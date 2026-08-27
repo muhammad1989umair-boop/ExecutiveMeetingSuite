@@ -83,7 +83,7 @@ Chief of Staff
 // Get action items
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    let query = `SELECT ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+    let query = `SELECT ai.id, ai.action_item_number, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
                         ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
                         ai.created_by, ai.created_at, ai.updated_at,
                         u.full_name, u.email,
@@ -117,7 +117,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+      `SELECT ai.id, ai.action_item_number, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
               ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
               ai.created_by, ai.created_at, ai.updated_at,
               u.full_name, u.email,

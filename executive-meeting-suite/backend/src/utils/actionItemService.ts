@@ -8,7 +8,7 @@ export const actionItemService = {
     // Get action items with responsible person and division details
     let query = `
       SELECT
-        ai.id, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
+        ai.id, ai.action_item_number, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
         ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
         ai.created_by, ai.created_at, ai.updated_at,
         u.full_name, u.email,
