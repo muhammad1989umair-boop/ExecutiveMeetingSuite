@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { Plus, Calendar, MapPin, Users } from 'lucide-react'
+import { Plus, Calendar, MapPin, Users, X } from 'lucide-react'
 
 interface Meeting {
   id: string
@@ -16,17 +16,43 @@ interface Meeting {
   closed_items: number
 }
 
+interface DivisionalHead {
+  id: string
+  email: string
+  full_name: string
+  title: string
+  division_name: string
+  company: string
+}
+
 export default function Meetings() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({ title: '', description: '', meetingDate: '', location: '' })
+  const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHead[]>([])
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    meetingDate: '',
+    location: '',
+    participants: [] as string[]
+  })
   const navigate = useNavigate()
   const { request, loading } = useApi()
   const { user } = useAuth()
 
   useEffect(() => {
     loadMeetings()
+    loadDivisionalHeads()
   }, [])
+
+  const loadDivisionalHeads = async () => {
+    try {
+      const data = await request('GET', '/users/divisional-heads')
+      setDivisionalHeads(data.users || [])
+    } catch (error) {
+      console.error('Failed to load divisional heads:', error)
+    }
+  }
 
   const loadMeetings = async () => {
     try {
@@ -39,20 +65,34 @@ export default function Meetings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (formData.participants.length === 0) {
+      toast.error('Please select at least one participant')
+      return
+    }
     try {
       await request('POST', '/meetings', {
         title: formData.title,
         description: formData.description,
         meetingDate: formData.meetingDate,
-        location: formData.location
+        location: formData.location,
+        participants: formData.participants
       })
       toast.success('Meeting created successfully!')
       setShowForm(false)
-      setFormData({ title: '', description: '', meetingDate: '', location: '' })
+      setFormData({ title: '', description: '', meetingDate: '', location: '', participants: [] })
       loadMeetings()
     } catch (error) {
       toast.error('Failed to create meeting')
     }
+  }
+
+  const toggleParticipant = (headId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      participants: prev.participants.includes(headId)
+        ? prev.participants.filter(id => id !== headId)
+        : [...prev.participants, headId]
+    }))
   }
 
   return (
@@ -109,6 +149,39 @@ export default function Meetings() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
             ></textarea>
+
+            {/* Participants Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-slate-900">
+                Participants <span className="text-red-500">*</span>
+              </label>
+              <div className="bg-slate-50 rounded-lg border border-slate-300 p-4 max-h-48 overflow-y-auto">
+                {divisionalHeads.length > 0 ? (
+                  <div className="space-y-2">
+                    {divisionalHeads.map((head) => (
+                      <label key={head.id} className="flex items-center space-x-2 cursor-pointer hover:bg-slate-100 p-2 rounded">
+                        <input
+                          type="checkbox"
+                          checked={formData.participants.includes(head.id)}
+                          onChange={() => toggleParticipant(head.id)}
+                          className="w-4 h-4 rounded border-slate-300 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-900">{head.full_name}</p>
+                          <p className="text-xs text-slate-500">{head.division_name} - {head.company}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm">Loading participants...</p>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                Selected: {formData.participants.length} participant{formData.participants.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
             <div className="flex space-x-3">
               <button
                 type="submit"

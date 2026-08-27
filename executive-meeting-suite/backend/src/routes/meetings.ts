@@ -7,17 +7,20 @@ const router = Router();
 // Create meeting
 router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, meetingDate, location, attendees } = req.body;
+    const { title, description, meetingDate, location, participants, attendees } = req.body;
 
     if (!title || !meetingDate) {
       return res.status(400).json({ error: 'Title and meeting date required' });
     }
 
+    // Use participants if provided, otherwise attendees
+    const meetingAttendees = participants || attendees || [];
+
     const result = await pool.query(
       `INSERT INTO meetings (title, description, meeting_date, created_by, location, attendees)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [title, description, new Date(meetingDate), req.user?.id, location, attendees || []]
+      [title, description, new Date(meetingDate), req.user?.id, location, meetingAttendees]
     );
 
     // Emit via WebSocket if needed
