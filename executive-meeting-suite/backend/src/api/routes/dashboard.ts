@@ -1,0 +1,115 @@
+import { Router, Request, Response } from 'express';
+import { pool } from '../database';
+import { authenticate, AuthRequest } from '../middleware/auth';
+
+const router = Router();
+
+// Get dashboard metrics
+router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const totalActions = await pool.query(
+      'SELECT COUNT(*) as count FROM action_items'
+    );
+
+    const openActions = await pool.query(
+      "SELECT COUNT(*) as count FROM action_items WHERE status != 'CLOSED'"
+    );
+
+    const closedActions = await pool.query(
+      "SELECT COUNT(*) as count FROM action_items WHERE status = 'CLOSED'"
+    );
+
+    const pendingReview = await pool.query(
+      "SELECT COUNT(*) as count FROM action_items WHERE status = 'PENDING_REVIEW'"
+    );
+
+    const overdue = await pool.query(
+      "SELECT COUNT(*) as count FROM action_items WHERE target_date < CURRENT_TIMESTAMP AND status != 'CLOSED'"
+    );
+
+    const byPriority = await pool.query(
+      `SELECT priority, COUNT(*) as count
+       FROM action_items
+       WHERE status != 'CLOSED'
+       GROUP BY priority`
+    );
+
+    const byDivision = await pool.query(
+      `SELECT d.name, COUNT(ai.id) as count
+       FROM action_items ai
+       JOIN divisions d ON ai.responsible_division_id = d.id
+       WHERE ai.status != 'CLOSED'
+       GROUP BY d.name`
+    );
+
+    res.json({
+      metrics: {
+        totalActions: parseInt(totalActions.rows[0].count),
+        openActions: parseInt(openActions.rows[0].count),
+        closedActions: parseInt(closedActions.rows[0].count),
+        pendingReview: parseInt(pendingReview.rows[0].count),
+        overdueActions: parseInt(overdue.rows[0].count),
+        completionRate: totalActions.rows[0].count > 0
+          ? ((closedActions.rows[0].count / totalActions.rows[0].count) * 100).toFixed(2)
+          : 0
+      },
+      byPriority: byPriority.rows.map(row => ({
+        priority: row.priority,
+        count: parseInt(row.count)
+      })),
+      byDivision: byDivision.rows.map(row => ({
+        division: row.name,
+        count: parseInt(row.count)
+      }))
+    });
+  } catch (error: any) {
+    console.error('Error fetching metrics:', error);
+    res.status(500).json({ error: 'Failed to load metrics' });
+  }
+});
+
+// Get action items timeline
+router.get('/timeline', authenticate, async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT DATE_TRUNC('day', target_date) as date, COUNT(*) as count
+       FROM action_items
+       WHERE status != 'CLOSED'
+       GROUP BY DATE_TRUNC('day', target_date)
+       ORDER BY date ASC
+       LIMIT 30`
+    );
+
+    res.json({
+      timeline: result.rows.map(row => ({
+        date: row.date,
+        count: parseInt(row.count)
+      }))
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to load timeline' });
+  }
+});
+
+// Get recent activity
+router.get('/activity', authenticate, async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT ai.*, u.full_name, d.name as division_name, m.title as meeting_title
+       FROM action_items ai
+       JOIN users u ON ai.responsible_user_id = u.id
+       JOIN divisions d ON ai.responsible_division_id = d.id
+       JOIN meetings m ON ai.meeting_id = m.id
+       ORDER BY ai.updated_at DESC
+       LIMIT 20`
+    );
+
+    res.json({
+      activities: result.rows
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to load activity' });
+  }
+});
+
+export default router;
