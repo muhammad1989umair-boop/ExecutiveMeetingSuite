@@ -29,11 +29,14 @@ export interface ActionItem {
   meeting_id: string
   title: string
   description?: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   status: 'OPEN' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'COMPLETED' | 'CLOSED'
   target_date: Date
-  responsible_user_id: string
-  responsible_division_id?: string
+  responsible_person_id: string
+  responsible_person_name?: string
+  responsible_person_email?: string
+  division_id?: string
+  company_id?: string
   created_by: string
   created_at: Date
   updated_at: Date
