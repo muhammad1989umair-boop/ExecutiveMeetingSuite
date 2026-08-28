@@ -17,7 +17,7 @@ start "EMS Frontend" cmd /c "cd frontend && npm run dev"
 timeout /t 8 /nobreak >nul
 
 REM Open browser
-start http://localhost:3000
+start http://localhost:5000
 
 REM Show status
 echo.
@@ -25,8 +25,8 @@ echo ========================================
 echo   Executive Meeting Suite Started
 echo ========================================
 echo.
-echo Frontend: http://localhost:3000
-echo Backend:  http://localhost:5000
+echo Frontend: http://localhost:5000
+echo Backend:  http://localhost:3000
 echo.
 echo Demo Login:
 echo   Email: umair.ilyas@gatronova.com

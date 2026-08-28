@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useApi } from '../hooks/useApi'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { Users, Building2, Layers } from 'lucide-react'
 
@@ -11,6 +11,7 @@ interface DivisionalHead {
   title: string
   role: string
   division_id: string
+  phone?: string
 }
 
 interface DivisionalHeadWithDetails extends DivisionalHead {
@@ -38,8 +39,11 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [newDivision, setNewDivision] = useState({ name: '', company: '' })
   const [newCompany, setNewCompany] = useState({ name: '' })
+  const [newHead, setNewHead] = useState({ email: '', fullName: '', title: '', divisionId: '', password: '', phone: '' })
   const [addingDivision, setAddingDivision] = useState(false)
   const [addingCompany, setAddingCompany] = useState(false)
+  const [addingHead, setAddingHead] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const { request } = useApi()
   const { user } = useAuth()
 
@@ -103,6 +107,47 @@ export default function Settings() {
     }
   }
 
+  const handleAddHead = async () => {
+    if (!newHead.email || !newHead.fullName || !newHead.title || !newHead.divisionId || !newHead.password || !newHead.phone) {
+      toast.error('All fields are required')
+      return
+    }
+
+    if (newHead.password.length < 8) {
+      toast.error('Password must be at least 8 characters')
+      return
+    }
+
+    try {
+      setAddingHead(true)
+      await request('POST', '/users', newHead)
+      toast.success('Divisional head added successfully')
+      setNewHead({ email: '', fullName: '', title: '', divisionId: '', password: '', phone: '' })
+      await loadAllData()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add divisional head')
+    } finally {
+      setAddingHead(false)
+    }
+  }
+
+  const handleDeleteHead = async (headId: string) => {
+    if (!confirm('Are you sure you want to delete this divisional head?')) {
+      return
+    }
+
+    try {
+      setDeletingId(headId)
+      await request('PATCH', `/users/${headId}/deactivate`, {})
+      toast.success('Divisional head deleted successfully')
+      await loadAllData()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete divisional head')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   if (user?.role !== 'CHIEF_OF_STAFF') {
     return (
       <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -130,7 +175,7 @@ export default function Settings() {
 
       {/* Divisional Heads Section */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center mb-6">
+        <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center space-x-2">
             <Users className="w-6 h-6 text-blue-600" />
             <span>Organization Divisional Heads</span>
@@ -138,6 +183,93 @@ export default function Settings() {
           <span className="ml-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
             {divisionalHeads.length} members
           </span>
+        </div>
+
+        {/* Add Divisional Head Form */}
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm font-semibold text-slate-700 mb-4">Add New Divisional Head</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Email *</label>
+              <input
+                type="email"
+                placeholder="email@company.com"
+                value={newHead.email}
+                onChange={(e) => setNewHead({ ...newHead, email: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Full Name *</label>
+              <input
+                type="text"
+                placeholder="John Doe"
+                value={newHead.fullName}
+                onChange={(e) => setNewHead({ ...newHead, fullName: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Title *</label>
+              <input
+                type="text"
+                placeholder="Division Head"
+                value={newHead.title}
+                onChange={(e) => setNewHead({ ...newHead, title: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Phone *</label>
+              <input
+                type="tel"
+                placeholder="+92-300-1234567"
+                value={newHead.phone}
+                onChange={(e) => setNewHead({ ...newHead, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Division *</label>
+              <select
+                value={newHead.divisionId}
+                onChange={(e) => setNewHead({ ...newHead, divisionId: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Division</option>
+                {divisions.map((div) => (
+                  <option key={div.id} value={div.id}>{div.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Company</label>
+              <input
+                type="text"
+                placeholder="Auto-filled from Division"
+                value={newHead.divisionId ? divisions.find(d => d.id === newHead.divisionId)?.company || '' : ''}
+                disabled
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-100 text-slate-600 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Password (min 8 chars) *</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={newHead.password}
+                onChange={(e) => setNewHead({ ...newHead, password: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleAddHead}
+            disabled={addingHead}
+            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
+          >
+            {addingHead ? 'Adding...' : 'Add Divisional Head'}
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -149,7 +281,9 @@ export default function Settings() {
                 <th className="px-4 py-3 font-semibold">Title</th>
                 <th className="px-4 py-3 font-semibold">Division</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Phone</th>
                 <th className="px-4 py-3 font-semibold">Company</th>
+                <th className="px-4 py-3 font-semibold">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -161,16 +295,26 @@ export default function Settings() {
                     <td className="px-4 py-3">{head.title}</td>
                     <td className="px-4 py-3">{head.division_name || 'N/A'}</td>
                     <td className="px-4 py-3 text-blue-600">{head.email}</td>
+                    <td className="px-4 py-3 text-slate-600">{head.phone || 'N/A'}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded">
                         {head.company || 'Gatronova'}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDeleteHead(head.id)}
+                        disabled={deletingId === head.id}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-semibold disabled:opacity-50 transition-colors"
+                      >
+                        {deletingId === head.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     No divisional heads found
                   </td>
                 </tr>

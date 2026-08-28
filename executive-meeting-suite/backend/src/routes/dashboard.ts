@@ -42,6 +42,37 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
        GROUP BY d.name`
     );
 
+    const byCompany = await pool.query(
+      `SELECT d.company, COUNT(ai.id) as count
+       FROM action_items ai
+       JOIN divisions d ON ai.responsible_division_id = d.id
+       WHERE ai.status != 'CLOSED'
+       GROUP BY d.company`
+    );
+
+    const byResponsiblePerson = await pool.query(
+      `SELECT u.full_name, COUNT(ai.id) as count
+       FROM action_items ai
+       JOIN users u ON ai.responsible_user_id = u.id
+       WHERE ai.status != 'CLOSED'
+       GROUP BY u.full_name`
+    );
+
+    const byAging = await pool.query(
+      `SELECT
+        CASE
+          WHEN CURRENT_TIMESTAMP - target_date >= interval '30 days' THEN '30+ days overdue'
+          WHEN CURRENT_TIMESTAMP - target_date >= interval '15 days' THEN '15-29 days overdue'
+          WHEN CURRENT_TIMESTAMP - target_date >= interval '7 days' THEN '7-14 days overdue'
+          WHEN CURRENT_TIMESTAMP - target_date >= interval '1 day' THEN '1-6 days overdue'
+        END as days,
+        COUNT(ai.id) as count
+       FROM action_items ai
+       WHERE ai.status != 'CLOSED' AND target_date < CURRENT_TIMESTAMP
+       GROUP BY days
+       ORDER BY days DESC`
+    );
+
     res.json({
       metrics: {
         totalActions: parseInt(totalActions.rows[0].count),
@@ -59,6 +90,18 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
       })),
       byDivision: byDivision.rows.map(row => ({
         division: row.name,
+        count: parseInt(row.count)
+      })),
+      byCompany: byCompany.rows.map(row => ({
+        company: row.company,
+        count: parseInt(row.count)
+      })),
+      byResponsiblePerson: byResponsiblePerson.rows.map(row => ({
+        full_name: row.full_name,
+        count: parseInt(row.count)
+      })),
+      byAging: byAging.rows.map(row => ({
+        days: row.days,
         count: parseInt(row.count)
       }))
     });

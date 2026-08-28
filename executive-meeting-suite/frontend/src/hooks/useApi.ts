@@ -1,8 +1,21 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 
-// Use environment variable in production, localhost in development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+// Dynamically determine API URL based on current location
+const getAPIURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL
+  if (envUrl) return envUrl
+
+  // In development, API is on port 3000, frontend on 5000
+  if (window.location.port === '5000') {
+    return 'http://localhost:3000'
+  }
+
+  // In production, API is on same origin
+  return window.location.protocol + '//' + window.location.host
+}
+
+const API_URL = getAPIURL()
 const API_BASE = `${API_URL}/api`
 
 export const useApi = () => {
@@ -14,13 +27,20 @@ export const useApi = () => {
       setLoading(true)
       setError(null)
 
+      const headers: any = {
+        'Content-Type': 'application/json'
+      }
+
+      const token = localStorage.getItem('token')
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await axios({
         method,
         url: `${API_BASE}${url}`,
         data,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       })
 
       return response.data

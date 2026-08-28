@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 import { Plus, Calendar, MapPin, Users, X, Trash2 } from 'lucide-react'
 
@@ -15,6 +15,9 @@ interface Meeting {
   attendees: string[]
   open_items: number
   closed_items: number
+  division_name?: string
+  company?: string
+  responsible_person_name?: string
 }
 
 interface DivisionalHead {
@@ -26,33 +29,158 @@ interface DivisionalHead {
   company: string
 }
 
+interface Division {
+  id: string
+  name: string
+  company: string
+}
+
+interface Company {
+  id: string
+  name: string
+}
+
 export default function Meetings() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [filteredMeetings, setFilteredMeetings] = useState<Meeting[]>([])
   const [showForm, setShowForm] = useState(false)
   const [showAddParticipant, setShowAddParticipant] = useState(false)
   const [participantForm, setParticipantForm] = useState({ name: '', title: '', company: '', email: '' })
   const [addedParticipants, setAddedParticipants] = useState<Array<{ name: string; title: string; company: string; email: string }>>([])
+  const getDefaultDateTime = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
+  const toTitleCase = (str: string) => {
+    return str.replace(/\b\w/g, char => char.toUpperCase())
+  }
+
+  const capitalizeFirstLetter = (str: string) => {
+    if (str.length === 0) return str
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  }
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    meetingDate: '',
-    location: ''
+    meetingDate: getDefaultDateTime(),
+    location: '13th Floor - G&T Tower',
+    division: '',
+    company: '',
+    responsiblePerson: ''
   })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterCompany, setFilterCompany] = useState('ALL')
+  const [filterDivision, setFilterDivision] = useState('ALL')
+  const [filterResponsiblePerson, setFilterResponsiblePerson] = useState('ALL')
+  const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHead[]>([])
+  const [divisions, setDivisions] = useState<Division[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
+
   const navigate = useNavigate()
   const { request, loading } = useApi()
   const { user } = useAuth()
 
   useEffect(() => {
     loadMeetings()
+    loadDivisionalHeads()
+    loadDivisions()
+    loadCompanies()
   }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [meetings, searchTerm, filterCompany, filterDivision, filterResponsiblePerson])
+
+  useEffect(() => {
+    if (divisionalHeads.length > 0 && !formData.responsiblePerson) {
+      setFormData(prev => ({ ...prev, responsiblePerson: divisionalHeads[0].id }))
+    }
+  }, [divisionalHeads])
 
   const loadMeetings = async () => {
     try {
       const data = await request('GET', '/meetings')
-      setMeetings(data.meetings)
+      const sortedMeetings = (data.meetings || []).sort((a: Meeting, b: Meeting) =>
+        new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime()
+      )
+      setMeetings(sortedMeetings)
     } catch (error) {
       console.error('Failed to load meetings:', error)
     }
+  }
+
+  const loadDivisionalHeads = async () => {
+    try {
+      const data = await request('GET', '/users/divisional-heads')
+      setDivisionalHeads(data.users || [])
+    } catch (error) {
+      console.error('Failed to load divisional heads:', error)
+    }
+  }
+
+  const loadDivisions = async () => {
+    try {
+      const data = await request('GET', '/meetings/master-data/divisions')
+      setDivisions(data.divisions || [])
+    } catch (error) {
+      console.error('Failed to load divisions:', error)
+    }
+  }
+
+  const loadCompanies = async () => {
+    try {
+      const data = await request('GET', '/meetings/master-data/companies')
+      setCompanies(data.companies || [])
+    } catch (error) {
+      console.error('Failed to load companies:', error)
+    }
+  }
+
+  const applyFilters = () => {
+    let filtered = meetings
+
+    if (searchTerm) {
+      filtered = filtered.filter(meeting =>
+        meeting.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        meeting.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
+    if (filterCompany !== 'ALL') {
+      filtered = filtered.filter(meeting =>
+        meeting.attendees?.some(email =>
+          divisionalHeads.some(head => head.email === email && head.company === filterCompany)
+        )
+      )
+    }
+
+    if (filterDivision !== 'ALL') {
+      filtered = filtered.filter(meeting =>
+        meeting.attendees?.some(email =>
+          divisionalHeads.some(head => head.email === email && head.division_name === filterDivision)
+        )
+      )
+    }
+
+    if (filterResponsiblePerson !== 'ALL') {
+      filtered = filtered.filter(meeting =>
+        meeting.attendees?.includes(filterResponsiblePerson)
+      )
+    }
+
+    // Sort by date chronologically
+    filtered.sort((a, b) =>
+      new Date(a.meeting_date).getTime() - new Date(b.meeting_date).getTime()
+    )
+
+    setFilteredMeetings(filtered)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,11 +195,14 @@ export default function Meetings() {
         description: formData.description,
         meetingDate: formData.meetingDate,
         location: formData.location,
+        division: formData.division,
+        company: formData.company,
+        responsiblePerson: formData.responsiblePerson,
         participants: addedParticipants
       })
       toast.success('Meeting created successfully!')
       setShowForm(false)
-      setFormData({ title: '', description: '', meetingDate: '', location: '' })
+      setFormData({ title: '', description: '', meetingDate: getDefaultDateTime(), location: '13th Floor - G&T Tower', division: '', company: '', responsiblePerson: '' })
       setAddedParticipants([])
       loadMeetings()
     } catch (error) {
@@ -81,8 +212,8 @@ export default function Meetings() {
 
   const handleAddParticipant = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!participantForm.name || !participantForm.email) {
-      toast.error('Name and Email are required')
+    if (!participantForm.name) {
+      toast.error('Name is required')
       return
     }
     setAddedParticipants([...addedParticipants, participantForm])
@@ -113,7 +244,7 @@ export default function Meetings() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Meetings</h1>
-          <p className="text-slate-600">Manage your executive meetings</p>
+          <p className="text-slate-600">Manage your executive meetings • Total: <span className="font-semibold text-slate-900">{meetings.length}</span></p>
         </div>
         {user?.role === 'CHIEF_OF_STAFF' && (
           <button
@@ -136,7 +267,7 @@ export default function Meetings() {
                 type="text"
                 placeholder="Meeting Title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value.toUpperCase() })}
                 className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -150,7 +281,7 @@ export default function Meetings() {
             </div>
             <input
               type="text"
-              placeholder="Location"
+              placeholder="13th Floor - G&T Tower"
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -158,9 +289,52 @@ export default function Meetings() {
             <textarea
               placeholder="Description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
+              onChange={(e) => setFormData({ ...formData, description: toTitleCase(e.target.value) })}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-16"
             ></textarea>
+
+            {/* Division, Company, Responsible Person */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Division</label>
+                <select
+                  value={formData.division}
+                  onChange={(e) => setFormData({ ...formData, division: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Division</option>
+                  {divisions.map(div => (
+                    <option key={div.id} value={div.id}>{div.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Company</label>
+                <select
+                  value={formData.company}
+                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Company</option>
+                  {companies.map(comp => (
+                    <option key={comp.id} value={comp.id}>{comp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Responsible Person</label>
+                <select
+                  value={formData.responsiblePerson}
+                  onChange={(e) => setFormData({ ...formData, responsiblePerson: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Responsible Person</option>
+                  {divisionalHeads.map(head => (
+                    <option key={head.id} value={head.id}>{head.full_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             {/* Participants Section */}
             <div className="space-y-3">
@@ -189,7 +363,9 @@ export default function Meetings() {
                       type="text"
                       placeholder="Name *"
                       value={participantForm.name}
-                      onChange={(e) => setParticipantForm({ ...participantForm, name: e.target.value })}
+                      onChange={(e) => setParticipantForm({ ...participantForm, name: toTitleCase(e.target.value) })}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddParticipant(e)}
+                      autoFocus
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     />
                     <input
@@ -208,7 +384,7 @@ export default function Meetings() {
                     />
                     <input
                       type="email"
-                      placeholder="Email Address *"
+                      placeholder="Email Address"
                       value={participantForm.email}
                       onChange={(e) => setParticipantForm({ ...participantForm, email: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -283,6 +459,68 @@ export default function Meetings() {
         </div>
       )}
 
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search meetings by title or description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <span className="text-slate-600 font-semibold pt-2">Filter by:</span>
+          <select
+            value={filterCompany}
+            onChange={(e) => setFilterCompany(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Companies</option>
+            {[...new Set(divisionalHeads.map(head => head.company))].map(company => (
+              <option key={company} value={company}>{company}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterDivision}
+            onChange={(e) => setFilterDivision(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Divisions</option>
+            {[...new Set(divisionalHeads.map(head => head.division_name))].map(division => (
+              <option key={division} value={division}>{division}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterResponsiblePerson}
+            onChange={(e) => setFilterResponsiblePerson(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Persons</option>
+            {divisionalHeads.map(head => (
+              <option key={head.email} value={head.email}>{head.full_name}</option>
+            ))}
+          </select>
+
+          {(searchTerm || filterCompany !== 'ALL' || filterDivision !== 'ALL' || filterResponsiblePerson !== 'ALL') && (
+            <button
+              onClick={() => {
+                setSearchTerm('')
+                setFilterCompany('ALL')
+                setFilterDivision('ALL')
+                setFilterResponsiblePerson('ALL')
+              }}
+              className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Meetings List */}
       <div className="grid grid-cols-1 gap-4">
         {loading ? (
@@ -290,8 +528,8 @@ export default function Meetings() {
             <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-slate-600">Loading meetings...</p>
           </div>
-        ) : meetings.length > 0 ? (
-          meetings.map((meeting) => (
+        ) : filteredMeetings.length > 0 ? (
+          filteredMeetings.map((meeting) => (
             <div
               key={meeting.id}
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 group relative"
@@ -335,7 +573,7 @@ export default function Meetings() {
                 </div>
               </div>
               <p className="text-slate-600 mb-4">{meeting.description}</p>
-              <div className="grid grid-cols-3 gap-4 text-sm text-slate-600">
+              <div className="grid grid-cols-2 gap-4 text-sm text-slate-600">
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4" />
                   <span>{new Date(meeting.meeting_date).toLocaleDateString()}</span>
@@ -347,6 +585,18 @@ export default function Meetings() {
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4" />
                   <span>{meeting.attendees?.length || 0} attendees</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Division:</span>
+                  <span>{meeting.division_name || '—'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Company:</span>
+                  <span>{meeting.company || '—'}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Person:</span>
+                  <span>{meeting.responsible_person_name || '—'}</span>
                 </div>
               </div>
               </div>

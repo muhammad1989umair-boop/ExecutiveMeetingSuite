@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useApi } from '../hooks/useApi'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../context/AuthContext'
 import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -28,10 +28,15 @@ interface User {
 }
 
 export default function ActionItems() {
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [items, setItems] = useState<ActionItem[]>([])
   const [filteredItems, setFilteredItems] = useState<ActionItem[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [filterPriority, setFilterPriority] = useState('ALL')
+  const [filterMeeting, setFilterMeeting] = useState('ALL')
+  const [filterResponsiblePerson, setFilterResponsiblePerson] = useState('ALL')
+  const [filterDivision, setFilterDivision] = useState('ALL')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState('MEDIUM')
@@ -70,14 +75,31 @@ export default function ActionItems() {
 
   useEffect(() => {
     let filtered = items
+
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    }
+
     if (filterStatus !== 'ALL') {
       filtered = filtered.filter(item => item.status === filterStatus)
     }
     if (filterPriority !== 'ALL') {
       filtered = filtered.filter(item => item.priority === filterPriority)
     }
+    if (filterMeeting !== 'ALL') {
+      filtered = filtered.filter(item => item.meeting_title === filterMeeting)
+    }
+    if (filterResponsiblePerson !== 'ALL') {
+      filtered = filtered.filter(item => item.full_name === filterResponsiblePerson)
+    }
+    if (filterDivision !== 'ALL') {
+      filtered = filtered.filter(item => item.division_name === filterDivision)
+    }
     setFilteredItems(filtered)
-  }, [filterStatus, filterPriority, items])
+  }, [searchTerm, filterStatus, filterPriority, filterMeeting, filterResponsiblePerson, filterDivision, items])
 
   const handleAddItem = async (e: any) => {
     e.preventDefault?.()
@@ -93,13 +115,20 @@ export default function ActionItems() {
     }
 
     try {
+      const selectedPerson = divisionalHeads.find(h => h.id === responsiblePersonId)
+      if (!selectedPerson) {
+        toast.error('Invalid person selected')
+        return
+      }
+
       const response = await request('POST', '/action-items', {
         title: title.trim(),
         description: description.trim(),
         priority,
-        target_date: dueDate || new Date().toISOString().split('T')[0],
-        meeting_id: '46e0d600-4781-4fe0-9dfb-6fbcc2811879',
-        responsible_person_id: responsiblePersonId
+        targetDate: dueDate || new Date().toISOString().split('T')[0],
+        meetingId: '46e0d600-4781-4fe0-9dfb-6fbcc2811879',
+        responsibleUserId: responsiblePersonId,
+        responsibleDivisionId: selectedPerson.division_id
       })
 
       toast.success('✅ Action item created!')
@@ -111,7 +140,10 @@ export default function ActionItems() {
         setResponsiblePersonId(divisionalHeads[0].id)
       }
 
-      setTimeout(() => loadActionItems(), 500)
+      setTimeout(() => {
+        loadActionItems()
+        titleInputRef.current?.focus()
+      }, 500)
     } catch (error: any) {
       console.error('API Error:', error?.response?.data || error)
       toast.error(error?.response?.data?.error || 'Failed to create action item')
@@ -155,7 +187,7 @@ export default function ActionItems() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">Action Items</h1>
-        <p className="text-slate-600">Add new items below and manage all action items</p>
+        <p className="text-slate-600">Add new items below and manage all action items • Total: <span className="font-semibold text-slate-900">{items.length}</span></p>
       </div>
 
       {/* Add Item Form */}
@@ -164,22 +196,18 @@ export default function ActionItems() {
           <h2 className="text-lg font-bold text-slate-900 mb-4">➕ Create New Action Item</h2>
           <div className="space-y-3">
             <div className="grid grid-cols-12 gap-3">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
-                placeholder="Title *"
-                className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
-                placeholder="Description"
-                className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
+              <select
+                value={responsiblePersonId}
+                onChange={(e) => setResponsiblePersonId(e.target.value)}
+                className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Select Responsible Person *</option>
+                {divisionalHeads.map((head) => (
+                  <option key={head.id} value={head.id}>
+                    {head.full_name} {head.title ? `- ${head.title}` : ''} ({head.role})
+                  </option>
+                ))}
+              </select>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
@@ -204,29 +232,39 @@ export default function ActionItems() {
               </button>
             </div>
             <div className="grid grid-cols-12 gap-3">
-              <select
-                value={responsiblePersonId}
-                onChange={(e) => setResponsiblePersonId(e.target.value)}
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+                placeholder="[NEW] Title *"
                 className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                <option value="">Select Responsible Person *</option>
-                {divisionalHeads.map((head) => (
-                  <option key={head.id} value={head.id}>
-                    {head.full_name} {head.title ? `- ${head.title}` : ''} ({head.role})
-                  </option>
-                ))}
-              </select>
-              <div className="col-span-6 text-xs text-slate-500 pt-2">
-                Assign this action item to a team lead or divisional head
-              </div>
+              />
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+                placeholder="Description"
+                className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 bg-white rounded-lg shadow p-4">
-        <span className="text-slate-600 font-semibold">Filter by:</span>
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow p-4 space-y-3">
+        <input
+          type="text"
+          placeholder="Search action items by title or description..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
+        <div className="flex flex-wrap gap-3">
+          <span className="text-slate-600 font-semibold">Filter by:</span>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -250,6 +288,40 @@ export default function ActionItems() {
           <option value="MEDIUM">Medium Priority</option>
           <option value="LOW">Low Priority</option>
         </select>
+
+        <select
+          value={filterMeeting}
+          onChange={(e) => setFilterMeeting(e.target.value)}
+          className="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="ALL">All Meetings</option>
+          {Array.from(new Set(items.map(item => item.meeting_title))).filter(Boolean).map(meeting => (
+            <option key={meeting} value={meeting}>{meeting}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterResponsiblePerson}
+          onChange={(e) => setFilterResponsiblePerson(e.target.value)}
+          className="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="ALL">All Responsible Persons</option>
+          {Array.from(new Set(items.map(item => item.full_name))).filter(Boolean).map(person => (
+            <option key={person} value={person}>{person}</option>
+          ))}
+        </select>
+
+        <select
+          value={filterDivision}
+          onChange={(e) => setFilterDivision(e.target.value)}
+          className="px-3 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="ALL">All Divisions</option>
+          {Array.from(new Set(items.map(item => item.division_name))).filter(Boolean).map(division => (
+            <option key={division} value={division}>{division}</option>
+          ))}
+        </select>
+        </div>
       </div>
 
       {/* Items List */}

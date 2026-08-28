@@ -7,7 +7,7 @@ const router = Router();
 // Create meeting
 router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, meetingDate, location, participants, attendees } = req.body;
+    const { title, description, meetingDate, location, division, company, responsiblePerson, participants, attendees } = req.body;
 
     if (!title || !meetingDate) {
       return res.status(400).json({ error: 'Title and meeting date required' });
@@ -17,10 +17,10 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
     const meetingAttendees = participants || attendees || [];
 
     const result = await pool.query(
-      `INSERT INTO meetings (title, description, meeting_date, created_by, location, attendees)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO meetings (title, description, meeting_date, created_by, location, division_id, company, responsible_person_id, attendees)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [title, description, new Date(meetingDate), req.user?.id, location, meetingAttendees]
+      [title, description, new Date(meetingDate), req.user?.id, location, division || null, company || null, responsiblePerson || null, meetingAttendees]
     );
 
     // Emit via WebSocket if needed
@@ -30,8 +30,8 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
       meeting: result.rows[0]
     });
   } catch (error: any) {
-    console.error('Error creating meeting:', error);
-    res.status(500).json({ error: 'Failed to create meeting' });
+    console.error('Error creating meeting:', error.message || error);
+    res.status(500).json({ error: 'Failed to create meeting', details: error.message });
   }
 });
 
@@ -40,12 +40,18 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
-              m.created_by, m.created_at, m.updated_at,
+              m.created_by, m.created_at, m.updated_at, m.division_id, m.company, m.responsible_person_id,
+              d.name as division_name,
+              u.full_name as responsible_person_name,
               COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
               COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
+       LEFT JOIN divisions d ON m.division_id = d.id
+       LEFT JOIN users u ON m.responsible_person_id = u.id
        LEFT JOIN action_items ai ON m.id = ai.meeting_id
-       GROUP BY m.id
+       GROUP BY m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
+                m.created_by, m.created_at, m.updated_at, m.division_id, m.company, m.responsible_person_id,
+                d.name, u.full_name
        ORDER BY m.meeting_date DESC
        LIMIT 100`
     );
@@ -65,12 +71,15 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const result = await pool.query(
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
               m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
+              m.division_id, m.company, m.responsible_person_id,
               COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
               COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
        LEFT JOIN action_items ai ON m.id = ai.meeting_id
        WHERE m.id = $1
-       GROUP BY m.id`,
+       GROUP BY m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
+                m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
+                m.division_id, m.company, m.responsible_person_id`,
       [req.params.id]
     );
 
@@ -78,7 +87,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json({ meeting: result.rows[0] });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to load meeting' });
   }
@@ -116,6 +125,32 @@ router.patch('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: Au
   } catch (error: any) {
     console.error('Error updating meeting:', error);
     res.status(500).json({ error: 'Failed to update meeting' });
+  }
+});
+
+// Get divisions and companies
+router.get('/master-data/divisions', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT ON (name) id, name FROM divisions ORDER BY name`
+    );
+    res.json({ divisions: result.rows });
+  } catch (error: any) {
+    console.error('Error fetching divisions:', error.message);
+    res.status(500).json({ error: 'Failed to fetch divisions' });
+  }
+});
+
+// Get companies
+router.get('/master-data/companies', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT company FROM divisions WHERE company IS NOT NULL ORDER BY company`
+    );
+    res.json({ companies: result.rows.map((row: any) => ({ id: row.company, name: row.company })) });
+  } catch (error: any) {
+    console.error('Error fetching companies:', error.message);
+    res.status(500).json({ error: 'Failed to fetch companies' });
   }
 });
 

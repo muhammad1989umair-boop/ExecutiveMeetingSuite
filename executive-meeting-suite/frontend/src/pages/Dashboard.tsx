@@ -26,6 +26,9 @@ interface DashboardMetrics {
   }
   byPriority: Array<{ priority: string; count: number }>
   byDivision: Array<{ division: string; count: number }>
+  byCompany: Array<{ company: string; count: number }>
+  byResponsiblePerson: Array<{ full_name: string; count: number }>
+  byAging: Array<{ days: string; count: number }>
 }
 
 interface Activity {
@@ -95,6 +98,42 @@ export default function Dashboard() {
       data: metrics.byDivision.map(d => d.count),
       backgroundColor: 'rgba(59, 130, 246, 0.8)',
       borderColor: 'rgb(59, 130, 246)',
+      borderWidth: 2,
+      borderRadius: 6
+    }]
+  } : null
+
+  const companyData = metrics?.byCompany ? {
+    labels: metrics.byCompany.map(c => c.company),
+    datasets: [{
+      label: 'Open Action Items',
+      data: metrics.byCompany.map(c => c.count),
+      backgroundColor: 'rgba(16, 185, 129, 0.8)',
+      borderColor: 'rgb(16, 185, 129)',
+      borderWidth: 2,
+      borderRadius: 6
+    }]
+  } : null
+
+  const responsiblePersonData = metrics?.byResponsiblePerson ? {
+    labels: metrics.byResponsiblePerson.map(p => p.full_name),
+    datasets: [{
+      label: 'Open Action Items',
+      data: metrics.byResponsiblePerson.map(p => p.count),
+      backgroundColor: 'rgba(139, 92, 246, 0.8)',
+      borderColor: 'rgb(139, 92, 246)',
+      borderWidth: 2,
+      borderRadius: 6
+    }]
+  } : null
+
+  const agingData = metrics?.byAging ? {
+    labels: metrics.byAging.map(a => a.days),
+    datasets: [{
+      label: 'Overdue Action Items',
+      data: metrics.byAging.map(a => a.count),
+      backgroundColor: ['rgba(239, 68, 68, 0.8)', 'rgba(249, 115, 22, 0.8)', 'rgba(250, 204, 21, 0.8)', 'rgba(107, 114, 128, 0.8)'],
+      borderColor: ['rgb(239, 68, 68)', 'rgb(249, 115, 22)', 'rgb(250, 204, 21)', 'rgb(107, 114, 128)'],
       borderWidth: 2,
       borderRadius: 6
     }]
@@ -178,6 +217,46 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
+      {/* First Row: 3 Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Division Breakdown */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">By Division</h2>
+          {barData ? (
+            <div style={{ height: '300px' }}>
+              <Bar data={barData} options={{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }} />
+            </div>
+          ) : (
+            <p className="text-slate-500">No data available</p>
+          )}
+        </div>
+
+        {/* Company Breakdown */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">By Company</h2>
+          {companyData ? (
+            <div style={{ height: '300px' }}>
+              <Bar data={companyData} options={{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }} />
+            </div>
+          ) : (
+            <p className="text-slate-500">No data available</p>
+          )}
+        </div>
+
+        {/* Responsible Person Breakdown */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">By Responsible Person</h2>
+          {responsiblePersonData ? (
+            <div style={{ height: '300px' }}>
+              <Bar data={responsiblePersonData} options={{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }} />
+            </div>
+          ) : (
+            <p className="text-slate-500">No data available</p>
+          )}
+        </div>
+      </div>
+
+      {/* Second Row: 2 Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Priority Distribution */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -193,12 +272,12 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Division Breakdown */}
+        {/* Aging Breakdown */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">By Division</h2>
-          {barData ? (
+          <h2 className="text-lg font-bold text-slate-900 mb-4">By Aging (Overdue)</h2>
+          {agingData ? (
             <div style={{ height: '300px' }}>
-              <Bar data={barData} options={{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }} />
+              <Bar data={agingData} options={{ responsive: true, maintainAspectRatio: false, indexAxis: 'y' }} />
             </div>
           ) : (
             <p className="text-slate-500">No data available</p>

@@ -104,11 +104,22 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
                  JOIN divisions d ON ai.responsible_division_id = d.id
                  LEFT JOIN meetings m ON ai.meeting_id = m.id`;
     const params: any[] = [];
+    const conditions: string[] = [];
+
+    // Filter by meetingId if provided
+    if (req.query.meetingId) {
+      conditions.push(`ai.meeting_id = $${params.length + 1}`);
+      params.push(req.query.meetingId);
+    }
 
     // If user is a divisional head, only show their items
     if (req.user?.role === 'DIVISIONAL_HEAD') {
-      query += ` WHERE ai.responsible_user_id = $1`;
+      conditions.push(`ai.responsible_user_id = $${params.length + 1}`);
       params.push(req.user.id);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
     query += ` ORDER BY ai.target_date ASC LIMIT 100`;

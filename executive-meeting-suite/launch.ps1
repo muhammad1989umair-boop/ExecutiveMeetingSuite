@@ -21,7 +21,7 @@ Start-Process -WindowStyle Hidden -FilePath "cmd.exe" -ArgumentList "/c cd front
 Start-Sleep -Seconds 8
 
 # Open browser
-Start-Process "http://localhost:3000"
+Start-Process "http://localhost:5000"
 
 # Exit
 Exit

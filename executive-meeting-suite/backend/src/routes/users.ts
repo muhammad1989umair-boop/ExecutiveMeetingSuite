@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT id, email, full_name, title, role, division_id
+      `SELECT id, email, full_name, title, role, division_id, phone
        FROM users
        WHERE is_active = true
        ORDER BY full_name`
@@ -27,7 +27,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 router.get('/divisional-heads', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.email, u.full_name, u.title, u.role, u.division_id, d.name as division_name, d.company
+      `SELECT u.id, u.email, u.full_name, u.title, u.role, u.division_id, u.phone, d.name as division_name, d.company
        FROM users u
        LEFT JOIN divisions d ON u.division_id = d.id
        WHERE u.is_active = true AND (u.role = 'DIVISIONAL_HEAD' OR u.role = 'CHIEF_OF_STAFF')
@@ -63,19 +63,56 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// Create user (admin only)
+// Create divisional head (admin only)
 router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
   try {
-    const { email, fullName, title, role, divisionId } = req.body;
+    const { email, fullName, title, divisionId, password, phone } = req.body;
 
-    if (!email || !fullName) {
-      return res.status(400).json({ error: 'Email and full name required' });
+    if (!email || !fullName || !title || !divisionId || !phone) {
+      return res.status(400).json({ error: 'Email, full name, title, division, and phone are required' });
     }
 
-    // User will be created through registration, this endpoint is just for reference
-    res.status(400).json({ error: 'Use registration endpoint instead' });
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Check if email already exists
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+
+    // Verify division exists
+    const divisionCheck = await pool.query(
+      'SELECT id FROM divisions WHERE id = $1',
+      [divisionId]
+    );
+
+    if (divisionCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'Selected division does not exist' });
+    }
+
+    // Hash password (in production, use bcrypt)
+    const hashedPassword = Buffer.from(password).toString('base64');
+
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash, full_name, title, role, division_id, phone, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id, email, full_name, title, role, division_id, phone`,
+      [email, hashedPassword, fullName, title, 'DIVISIONAL_HEAD', divisionId, phone]
+    );
+
+    res.json({
+      message: 'Divisional head created successfully',
+      user: result.rows[0]
+    });
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to create user' });
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create divisional head: ' + error.message });
   }
 });
 
