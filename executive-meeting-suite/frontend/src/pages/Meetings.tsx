@@ -17,6 +17,7 @@ interface Meeting {
   closed_items: number
   division_name?: string
   company?: string
+  company_name?: string
   responsible_person_name?: string
 }
 
@@ -592,7 +593,7 @@ export default function Meetings() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="font-semibold">Company:</span>
-                  <span>{meeting.company || '—'}</span>
+                  <span>{meeting.company_name || '—'}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="font-semibold">Person:</span>

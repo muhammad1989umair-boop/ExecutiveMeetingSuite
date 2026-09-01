@@ -42,16 +42,18 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
               m.created_by, m.created_at, m.updated_at, m.division_id, m.company, m.responsible_person_id,
               d.name as division_name,
+              c.name as company_name,
               u.full_name as responsible_person_name,
               COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
               COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
        LEFT JOIN divisions d ON m.division_id = d.id
+       LEFT JOIN companies c ON (m.company = c.name OR (m.company ~ '^[0-9a-f-]{36}$' AND m.company::uuid = c.id))
        LEFT JOIN users u ON m.responsible_person_id = u.id
        LEFT JOIN action_items ai ON m.id = ai.meeting_id
        GROUP BY m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
                 m.created_by, m.created_at, m.updated_at, m.division_id, m.company, m.responsible_person_id,
-                d.name, u.full_name
+                d.name, c.name, u.full_name
        ORDER BY m.meeting_date DESC
        LIMIT 100`
     );
@@ -72,14 +74,16 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       `SELECT m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
               m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
               m.division_id, m.company, m.responsible_person_id,
+              c.name as company_name,
               COALESCE(SUM(CASE WHEN ai.status != 'CLOSED' THEN 1 ELSE 0 END), 0) as open_items,
               COALESCE(SUM(CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END), 0) as closed_items
        FROM meetings m
+       LEFT JOIN companies c ON (m.company = c.name OR (m.company ~ '^[0-9a-f-]{36}$' AND m.company::uuid = c.id))
        LEFT JOIN action_items ai ON m.id = ai.meeting_id
        WHERE m.id = $1
        GROUP BY m.id, m.meeting_number, m.title, m.description, m.meeting_date, m.location, m.attendees,
                 m.created_by, m.audio_url, m.audio_transcription, m.notes, m.created_at, m.updated_at,
-                m.division_id, m.company, m.responsible_person_id`,
+                m.division_id, m.company, m.responsible_person_id, c.name`,
       [req.params.id]
     );
 
