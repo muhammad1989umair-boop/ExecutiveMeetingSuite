@@ -73,10 +73,10 @@ async function initializeDatabase() {
       const schema = fs.readFileSync(path.join(__dirname, 'db/init.sql'), 'utf8');
       await pool.query(schema);
       console.log('✓ Database schema created');
-
-      // Seed demo data
-      await seedDemoData();
     }
+
+    // Always seed companies and base data
+    await seedDemoData();
   } catch (error: any) {
     console.error('Database initialization error:', error);
   }
@@ -87,12 +87,12 @@ async function seedDemoData() {
     const bcryptjs = require('bcryptjs');
     const hashedPassword = await bcryptjs.hash('demo123', 10);
 
-    // Insert companies
+    // Insert companies (always ensure all 14 companies exist)
     const companies = ['Novatex Limited', 'Gatronova', 'External', 'Novatex', 'Finance', 'Marketing', 'Executive Office', 'Executive', 'Plant Operations', 'Supply Chain', 'HSE', 'Internal Audit', 'Legal and Tax', 'Others'];
     for (const company of companies) {
       await pool.query(
-        `INSERT INTO companies (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`,
-        [company]
+        `INSERT INTO companies (name, description) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`,
+        [company, `${company} company`]
       );
     }
 
