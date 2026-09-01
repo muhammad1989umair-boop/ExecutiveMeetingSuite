@@ -90,10 +90,17 @@ async function seedDemoData() {
     // Insert all 24 companies
     const companies = ['Bonanza', 'DVAGO', 'Executive', 'Executive Office', 'External', 'Finance', 'Gatron', 'Gatronova', 'GPAC', 'HSE', 'Internal Audit', 'KGT', 'Krystalite', 'Legal and Tax', 'Marketing', 'Mustaqeem', 'Nova Mobility', 'Novatex', 'Novatex-BOPET', 'Novatex Limited', 'Others', 'PharmNova', 'Plant Operations', 'Supply Chain'];
     for (const company of companies) {
-      await pool.query(
-        `INSERT INTO companies (name, description) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`,
-        [company, `${company} company`]
-      );
+      try {
+        await pool.query(
+          `INSERT INTO companies (name, description) VALUES ($1, $2)`,
+          [company, `${company} company`]
+        );
+      } catch (err: any) {
+        // Ignore if company already exists
+        if (err.code !== '23505') { // 23505 is unique constraint violation
+          throw err;
+        }
+      }
     }
 
     // Insert demo divisions
