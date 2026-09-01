@@ -155,25 +155,15 @@ export default function Meetings() {
     }
 
     if (filterCompany !== 'ALL') {
-      filtered = filtered.filter(meeting =>
-        meeting.attendees?.some(email =>
-          divisionalHeads.some(head => head.email === email && head.company === filterCompany)
-        )
-      )
+      filtered = filtered.filter(meeting => meeting.company_name === filterCompany)
     }
 
     if (filterDivision !== 'ALL') {
-      filtered = filtered.filter(meeting =>
-        meeting.attendees?.some(email =>
-          divisionalHeads.some(head => head.email === email && head.division_name === filterDivision)
-        )
-      )
+      filtered = filtered.filter(meeting => meeting.division_name === filterDivision)
     }
 
     if (filterResponsiblePerson !== 'ALL') {
-      filtered = filtered.filter(meeting =>
-        meeting.attendees?.includes(filterResponsiblePerson)
-      )
+      filtered = filtered.filter(meeting => meeting.responsible_person_name === filterResponsiblePerson)
     }
 
     // Sort by date chronologically
@@ -502,7 +492,7 @@ export default function Meetings() {
           >
             <option value="ALL">All Persons</option>
             {divisionalHeads.map(head => (
-              <option key={head.email} value={head.email}>{head.full_name}</option>
+              <option key={head.id} value={head.full_name}>{head.full_name}</option>
             ))}
           </select>
 
