@@ -23,6 +23,10 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
       "SELECT COUNT(*) as count FROM action_items WHERE status = 'PENDING_REVIEW'"
     );
 
+    const forReview = await pool.query(
+      "SELECT COUNT(*) as count FROM action_items WHERE status = 'FOR_REVIEW'"
+    );
+
     const overdue = await pool.query(
       "SELECT COUNT(*) as count FROM action_items WHERE target_date < CURRENT_TIMESTAMP AND status != 'CLOSED'"
     );
@@ -81,6 +85,7 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
         openActions: parseInt(openActions.rows[0].count),
         closedActions: parseInt(closedActions.rows[0].count),
         pendingReview: parseInt(pendingReview.rows[0].count),
+        forReview: parseInt(forReview.rows[0].count),
         overdueActions: parseInt(overdue.rows[0].count),
         completionRate: totalActions.rows[0].count > 0
           ? ((closedActions.rows[0].count / totalActions.rows[0].count) * 100).toFixed(2)

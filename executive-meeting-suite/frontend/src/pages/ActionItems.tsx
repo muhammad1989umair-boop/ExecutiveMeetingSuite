@@ -16,6 +16,7 @@ interface ActionItem {
   division_name: string
   meeting_number?: number
   meeting_title?: string
+  responsible_user_id?: string
 }
 
 interface User {
@@ -185,6 +186,28 @@ export default function ActionItems() {
         loadActionItems()
       } catch (error) {
         toast.error('Failed to delete action item')
+      }
+    }
+  }
+
+  const handleMarkForReview = async (id: string, title: string) => {
+    try {
+      await request('PATCH', `/action-items/${id}`, { status: 'FOR_REVIEW' })
+      toast.success('Marked for review!')
+      loadActionItems()
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to mark for review')
+    }
+  }
+
+  const handleClose = async (id: string, title: string) => {
+    if (window.confirm(`Close action item "${title}"?`)) {
+      try {
+        await request('PATCH', `/action-items/${id}`, { status: 'CLOSED' })
+        toast.success('Action item closed!')
+        loadActionItems()
+      } catch (error: any) {
+        toast.error(error?.message || 'Failed to close action item')
       }
     }
   }
@@ -405,6 +428,30 @@ export default function ActionItems() {
                   <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                     ● {item.priority}
                   </span>
+                  {item.status === 'OPEN' && user?.id === item.responsible_user_id && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleMarkForReview(item.id, item.title)
+                      }}
+                      className="flex-shrink-0 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm font-semibold"
+                      title="Mark for review"
+                    >
+                      Mark for Review
+                    </button>
+                  )}
+                  {item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleClose(item.id, item.title)
+                      }}
+                      className="flex-shrink-0 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-semibold"
+                      title="Close action item"
+                    >
+                      Close
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()

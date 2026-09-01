@@ -21,6 +21,7 @@ interface DashboardMetrics {
     openActions: number
     closedActions: number
     pendingReview: number
+    forReview: number
     overdueActions: number
     completionRate: string
   }
@@ -190,6 +191,17 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-slate-900 mt-2">{metrics?.metrics.pendingReview || 0}</p>
             </div>
             <Users className="w-12 h-12 text-purple-500 opacity-20" />
+          </div>
+        </div>
+
+        {/* For Review */}
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-600 text-sm font-medium">For Review</p>
+              <p className="text-3xl font-bold text-slate-900 mt-2">{metrics?.metrics.forReview || 0}</p>
+            </div>
+            <CheckCircle className="w-12 h-12 text-orange-500 opacity-20" />
           </div>
         </div>
 

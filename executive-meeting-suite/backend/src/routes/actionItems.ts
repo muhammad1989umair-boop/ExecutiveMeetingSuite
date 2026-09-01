@@ -165,22 +165,79 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 // Update action item status
 router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { status } = req.body;
+    const { status, title, description, priority, targetDate } = req.body;
     const actionItemId = req.params.id;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
 
-    if (!status) {
-      return res.status(400).json({ error: 'Status is required' });
-    }
-
-    const query = status === 'CLOSED'
-      ? `UPDATE action_items SET status = $1, closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`
-      : `UPDATE action_items SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`;
-
-    const result = await pool.query(query, [status, actionItemId]);
-
-    if (result.rows.length === 0) {
+    // Get the action item to check permissions
+    const itemResult = await pool.query('SELECT * FROM action_items WHERE id = $1', [actionItemId]);
+    if (itemResult.rows.length === 0) {
       return res.status(404).json({ error: 'Action item not found' });
     }
+
+    const actionItem = itemResult.rows[0];
+    const isResponsible = actionItem.responsible_user_id === userId;
+    const isAdmin = userRole === 'CHIEF_OF_STAFF';
+
+    // Permission checks for status changes
+    if (status) {
+      if (status === 'FOR_REVIEW') {
+        // Only responsible person can mark for review
+        if (!isResponsible) {
+          return res.status(403).json({ error: 'Only assigned person can mark for review' });
+        }
+      } else if (status === 'CLOSED') {
+        // Only admin can close
+        if (!isAdmin) {
+          return res.status(403).json({ error: 'Only admin can close action items' });
+        }
+      }
+    }
+
+    // Permission checks for updates
+    if (title || description || priority || targetDate) {
+      // Only responsible person or admin can update details
+      if (!isResponsible && !isAdmin) {
+        return res.status(403).json({ error: 'Only assigned person or admin can update' });
+      }
+    }
+
+    // Build update query
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (title !== undefined) {
+      updates.push(`title = $${paramCount++}`);
+      values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${paramCount++}`);
+      values.push(description);
+    }
+    if (priority !== undefined) {
+      updates.push(`priority = $${paramCount++}`);
+      values.push(priority);
+    }
+    if (targetDate !== undefined) {
+      updates.push(`target_date = $${paramCount++}`);
+      values.push(new Date(targetDate));
+    }
+    if (status) {
+      updates.push(`status = $${paramCount++}`);
+      values.push(status);
+
+      if (status === 'CLOSED') {
+        updates.push(`closed_at = CURRENT_TIMESTAMP`);
+      }
+    }
+
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+    values.push(actionItemId);
+
+    const query = `UPDATE action_items SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    const result = await pool.query(query, values);
 
     res.json({
       message: 'Action item updated',
