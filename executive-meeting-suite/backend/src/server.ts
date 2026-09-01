@@ -168,6 +168,14 @@ app.use('/api/master-data', masterDataRoutes);
 // STATIC FILES (Frontend)
 // ============================================================================
 
+// Disable caching for frontend files
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 app.get('*', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
