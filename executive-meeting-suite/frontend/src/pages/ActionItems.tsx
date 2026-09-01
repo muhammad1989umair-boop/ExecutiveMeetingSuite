@@ -355,11 +355,11 @@ export default function ActionItems() {
                     {item.title}
                   </h3>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(item.status)}`}>
+                <div className="flex items-center space-x-3 flex-shrink-0">
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 ${getStatusColor(item.status)}`}>
                     {item.status}
                   </span>
-                  <span className={`text-sm font-semibold ${getPriorityColor(item.priority)}`}>
+                  <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                     ● {item.priority}
                   </span>
                   <button
