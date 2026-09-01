@@ -466,13 +466,13 @@ export default function MeetingDetail() {
       ) : (
         <>
           {meeting && (
-            <div className="bg-white rounded-lg shadow p-8">
-              <h1 className="text-xl font-bold text-slate-900 mb-2">{meeting.title}</h1>
-              <p className="text-slate-600 mb-6">
+            <div className="bg-white rounded-lg shadow p-3">
+              <h1 className="text-xl font-bold text-slate-900 mb-1">{meeting.title}</h1>
+              <p className="text-slate-600 mb-2 text-sm">
                 {new Date(meeting.meeting_date).toLocaleDateString()} • {meeting.location}
               </p>
               {meeting.description && (
-                <p className="text-slate-600 mb-4">{meeting.description}</p>
+                <p className="text-slate-600 mb-2 text-sm">{meeting.description}</p>
               )}
             </div>
           )}
