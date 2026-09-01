@@ -42,6 +42,7 @@ export default function ActionItems() {
   const [priority, setPriority] = useState('MEDIUM')
   const [dueDate, setDueDate] = useState('')
   const [responsiblePersonId, setResponsiblePersonId] = useState('')
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
   const [divisionalHeads, setDivisionalHeads] = useState<User[]>([])
   const { request, loading } = useApi()
   const { user } = useAuth()
@@ -122,7 +123,7 @@ export default function ActionItems() {
       }
 
       const response = await request('POST', '/action-items', {
-        title: title.trim(),
+        title: capitalizeTitle(title.trim()),
         description: description.trim(),
         priority,
         targetDate: dueDate || new Date().toISOString().split('T')[0],
@@ -182,6 +183,27 @@ export default function ActionItems() {
     }
   }
 
+  const capitalizeTitle = (text: string) => {
+    return text.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+  }
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value)
+    if (value.trim()) {
+      const filtered = items
+        .map(item => item.title)
+        .filter(title => title.toLowerCase().includes(value.toLowerCase()) && title !== value)
+      setTitleSuggestions(filtered.slice(0, 5))
+    } else {
+      setTitleSuggestions([])
+    }
+  }
+
+  const selectSuggestion = (suggestion: string) => {
+    setTitle(suggestion)
+    setTitleSuggestions([])
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -232,15 +254,30 @@ export default function ActionItems() {
               </button>
             </div>
             <div className="grid grid-cols-12 gap-3">
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
-                placeholder="[NEW] Title *"
-                className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
+              <div className="col-span-3 relative">
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={title}
+                  onChange={(e) => handleTitleChange(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddItem(e)}
+                  placeholder="[NEW] Title *"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                {titleSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border border-slate-300 rounded-lg shadow-lg mt-1">
+                    {titleSuggestions.map((suggestion, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => selectSuggestion(suggestion)}
+                        className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm border-b border-slate-200 last:border-b-0"
+                      >
+                        {suggestion}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
                 type="text"
                 value={description}

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApi } from '../hooks/useApi'
 import { ArrowLeft, Plus, Download, Mail, MessageCircle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -40,11 +40,13 @@ export default function MeetingDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { request } = useApi()
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [divisionalHeads, setDivisionalHeads] = useState<DivisionalHead[]>([])
   const [meeting, setMeeting] = useState<Meeting | null>(null)
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -124,7 +126,7 @@ export default function MeetingDetail() {
 
     try {
       await request('POST', `/action-items`, {
-        title: newItem.title,
+        title: capitalizeTitle(newItem.title),
         description: newItem.description,
         priority: newItem.priority,
         targetDate: newItem.dueDate || new Date().toISOString().split('T')[0],
@@ -134,9 +136,11 @@ export default function MeetingDetail() {
       })
 
       setNewItem({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assignedTo: divisionalHeads[0]?.id || '' })
-      setShowAddForm(false)
       toast.success('Action item created!')
       loadMeetingAndItems()
+      setTimeout(() => {
+        titleInputRef.current?.focus()
+      }, 500)
     } catch (error) {
       console.error('Error:', error)
       toast.error('Failed to create action item')
@@ -173,6 +177,27 @@ export default function MeetingDetail() {
       'CLOSED': 'bg-slate-100 text-slate-700'
     }
     return colors[status] || 'bg-slate-100 text-slate-700'
+  }
+
+  const capitalizeTitle = (text: string) => {
+    return text.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
+  }
+
+  const handleTitleChange = (value: string) => {
+    setNewItem({ ...newItem, title: value })
+    if (value.trim()) {
+      const filtered = actionItems
+        .map(item => item.title)
+        .filter(title => title.toLowerCase().includes(value.toLowerCase()) && title !== value)
+      setTitleSuggestions(filtered.slice(0, 5))
+    } else {
+      setTitleSuggestions([])
+    }
+  }
+
+  const selectSuggestion = (suggestion: string) => {
+    setNewItem({ ...newItem, title: suggestion })
+    setTitleSuggestions([])
   }
 
   const downloadExcel = () => {
@@ -488,14 +513,30 @@ export default function MeetingDetail() {
                 </button>
               </div>
               <div className="grid grid-cols-12 gap-3">
-                <input
-                  type="text"
-                  value={newItem.title}
-                  onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
-                  placeholder="Title *"
-                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                <div className="col-span-3 relative">
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={newItem.title}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
+                    placeholder="Title *"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  {titleSuggestions.length > 0 && (
+                    <div className="absolute z-10 w-full bg-white border border-slate-300 rounded-lg shadow-lg mt-1">
+                      {titleSuggestions.map((suggestion, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => selectSuggestion(suggestion)}
+                          className="px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm border-b border-slate-200 last:border-b-0"
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={newItem.description}
