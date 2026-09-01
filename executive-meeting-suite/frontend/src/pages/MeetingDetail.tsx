@@ -143,6 +143,18 @@ export default function MeetingDetail() {
     }
   }
 
+  const handleDeleteActionItem = async (id: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete the action item "${title}"?`)) {
+      try {
+        await request('DELETE', `/action-items/${id}`)
+        toast.success('Action item deleted successfully!')
+        loadMeetingAndItems()
+      } catch (error) {
+        toast.error('Failed to delete action item')
+      }
+    }
+  }
+
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
       'HIGH': 'text-red-600',
