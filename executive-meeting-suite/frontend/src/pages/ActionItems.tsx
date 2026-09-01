@@ -367,7 +367,7 @@ export default function ActionItems() {
                       e.stopPropagation()
                       handleDeleteItem(item.id, item.title)
                     }}
-                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                    className="flex-shrink-0 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors ml-2"
                     title="Delete action item"
                   >
                     <Trash2 className="w-5 h-5" />
