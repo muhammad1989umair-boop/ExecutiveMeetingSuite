@@ -104,35 +104,50 @@ async function seedDemoData() {
     }
 
     // Insert demo divisions
-    const execDiv = await pool.query(
-      `INSERT INTO divisions (name, company, description)
-       VALUES ('Executive Office', 'Novatex Limited', 'Chief of Staff Division')
-       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
-    );
+    let execDiv = await pool.query(`SELECT id FROM divisions WHERE name = 'Executive Office' LIMIT 1`);
+    if (!execDiv.rows.length) {
+      execDiv = await pool.query(
+        `INSERT INTO divisions (name, company, description)
+         VALUES ('Executive Office', 'Novatex Limited', 'Chief of Staff Division')
+         RETURNING id`
+      );
+    }
 
-    const marketingDiv = await pool.query(
-      `INSERT INTO divisions (name, company, description)
-       VALUES ('Marketing', 'Novatex Limited', 'Marketing Division')
-       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
-    );
+    let marketingDiv = await pool.query(`SELECT id FROM divisions WHERE name = 'Marketing' LIMIT 1`);
+    if (!marketingDiv.rows.length) {
+      marketingDiv = await pool.query(
+        `INSERT INTO divisions (name, company, description)
+         VALUES ('Marketing', 'Novatex Limited', 'Marketing Division')
+         RETURNING id`
+      );
+    }
 
-    const supplyDiv = await pool.query(
-      `INSERT INTO divisions (name, company, description)
-       VALUES ('Supply Chain', 'Novatex Limited', 'Supply Chain Division')
-       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
-    );
+    let supplyDiv = await pool.query(`SELECT id FROM divisions WHERE name = 'Supply Chain' LIMIT 1`);
+    if (!supplyDiv.rows.length) {
+      supplyDiv = await pool.query(
+        `INSERT INTO divisions (name, company, description)
+         VALUES ('Supply Chain', 'Novatex Limited', 'Supply Chain Division')
+         RETURNING id`
+      );
+    }
 
-    const itDiv = await pool.query(
-      `INSERT INTO divisions (name, company, description)
-       VALUES ('Information Technology', 'Novatex Limited', 'IT Division')
-       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
-    );
+    let itDiv = await pool.query(`SELECT id FROM divisions WHERE name = 'Information Technology' LIMIT 1`);
+    if (!itDiv.rows.length) {
+      itDiv = await pool.query(
+        `INSERT INTO divisions (name, company, description)
+         VALUES ('Information Technology', 'Novatex Limited', 'IT Division')
+         RETURNING id`
+      );
+    }
 
-    const hrDiv = await pool.query(
-      `INSERT INTO divisions (name, company, description)
-       VALUES ('Human Resources', 'Novatex Limited', 'HR Division')
-       ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id`
-    );
+    let hrDiv = await pool.query(`SELECT id FROM divisions WHERE name = 'Human Resources' LIMIT 1`);
+    if (!hrDiv.rows.length) {
+      hrDiv = await pool.query(
+        `INSERT INTO divisions (name, company, description)
+         VALUES ('Human Resources', 'Novatex Limited', 'HR Division')
+         RETURNING id`
+      );
+    }
 
     // Insert demo users
     const users = [
