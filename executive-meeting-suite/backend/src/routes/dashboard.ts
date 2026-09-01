@@ -43,10 +43,10 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
     );
 
     const byCompany = await pool.query(
-      `SELECT c.name as company, COALESCE(COUNT(ai.id), 0) as count
+      `SELECT c.name as company, COALESCE(COUNT(DISTINCT ai.id), 0) as count
        FROM companies c
-       LEFT JOIN divisions d ON d.company = c.name OR d.company = c.id::text
-       LEFT JOIN action_items ai ON ai.responsible_division_id = d.id AND ai.status != 'CLOSED'
+       LEFT JOIN meetings m ON (m.company = c.name OR m.company = c.id::text)
+       LEFT JOIN action_items ai ON ai.meeting_id = m.id AND ai.status != 'CLOSED'
        GROUP BY c.id, c.name
        ORDER BY count DESC`
     );
