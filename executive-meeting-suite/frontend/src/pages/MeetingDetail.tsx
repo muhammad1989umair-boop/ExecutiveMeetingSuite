@@ -440,22 +440,18 @@ export default function MeetingDetail() {
             <h2 className="text-lg font-bold text-slate-900 mb-4">➕ Create New Action Item</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-12 gap-3">
-                <input
-                  type="text"
-                  value={newItem.title}
-                  onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
-                  placeholder="Title *"
-                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
-                <input
-                  type="text"
-                  value={newItem.description}
-                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
-                  placeholder="Description"
-                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                />
+                <select
+                  value={newItem.assignedTo}
+                  onChange={(e) => setNewItem({ ...newItem, assignedTo: e.target.value })}
+                  className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">Select Responsible Person *</option>
+                  {divisionalHeads.map((head) => (
+                    <option key={head.id} value={head.id}>
+                      {head.full_name} {head.title ? `- ${head.title}` : ''} ({head.role})
+                    </option>
+                  ))}
+                </select>
                 <select
                   value={newItem.priority}
                   onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })}
@@ -480,21 +476,22 @@ export default function MeetingDetail() {
                 </button>
               </div>
               <div className="grid grid-cols-12 gap-3">
-                <select
-                  value={newItem.assignedTo}
-                  onChange={(e) => setNewItem({ ...newItem, assignedTo: e.target.value })}
-                  className="col-span-6 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                >
-                  <option value="">Select Responsible Person *</option>
-                  {divisionalHeads.map((head) => (
-                    <option key={head.id} value={head.id}>
-                      {head.full_name} {head.title ? `- ${head.title}` : ''} ({head.role})
-                    </option>
-                  ))}
-                </select>
-                <div className="col-span-6 text-xs text-slate-500 pt-2">
-                  Assign this action item to a team lead or divisional head
-                </div>
+                <input
+                  type="text"
+                  value={newItem.title}
+                  onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
+                  placeholder="Title *"
+                  className="col-span-3 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+                <input
+                  type="text"
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddActionItem(e as any)}
+                  placeholder="Description"
+                  className="col-span-9 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
               </div>
             </div>
           </div>
