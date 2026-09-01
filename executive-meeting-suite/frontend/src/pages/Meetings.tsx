@@ -155,15 +155,15 @@ export default function Meetings() {
     }
 
     if (filterCompany !== 'ALL') {
-      filtered = filtered.filter(meeting => meeting.company_name === filterCompany)
+      filtered = filtered.filter(meeting => (meeting.company_name || '').trim() === (filterCompany || '').trim())
     }
 
     if (filterDivision !== 'ALL') {
-      filtered = filtered.filter(meeting => meeting.division_name === filterDivision)
+      filtered = filtered.filter(meeting => (meeting.division_name || '').trim() === (filterDivision || '').trim())
     }
 
     if (filterResponsiblePerson !== 'ALL') {
-      filtered = filtered.filter(meeting => meeting.responsible_person_name === filterResponsiblePerson)
+      filtered = filtered.filter(meeting => (meeting.responsible_person_name || '').trim() === (filterResponsiblePerson || '').trim())
     }
 
     // Sort by date chronologically
