@@ -87,6 +87,15 @@ async function seedDemoData() {
     const bcryptjs = require('bcryptjs');
     const hashedPassword = await bcryptjs.hash('demo123', 10);
 
+    // Insert companies
+    const companies = ['Novatex Limited', 'Gatronova', 'External', 'Novatex', 'Finance', 'Marketing', 'Executive Office', 'Executive', 'Plant Operations', 'Supply Chain', 'HSE', 'Internal Audit', 'Legal and Tax', 'Others'];
+    for (const company of companies) {
+      await pool.query(
+        `INSERT INTO companies (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`,
+        [company]
+      );
+    }
+
     // Insert demo divisions
     const execDiv = await pool.query(
       `INSERT INTO divisions (name, company, description)

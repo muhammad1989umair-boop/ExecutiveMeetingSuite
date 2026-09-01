@@ -145,9 +145,9 @@ router.get('/master-data/divisions', authenticate, async (req: AuthRequest, res:
 router.get('/master-data/companies', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT DISTINCT company FROM divisions WHERE company IS NOT NULL ORDER BY company`
+      `SELECT id, name FROM companies ORDER BY name`
     );
-    res.json({ companies: result.rows.map((row: any) => ({ id: row.company, name: row.company })) });
+    res.json({ companies: result.rows.map((row: any) => ({ id: row.id, name: row.name })) });
   } catch (error: any) {
     console.error('Error fetching companies:', error.message);
     res.status(500).json({ error: 'Failed to fetch companies' });
