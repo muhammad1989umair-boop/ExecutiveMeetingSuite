@@ -183,9 +183,9 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     // Permission checks for status changes
     if (status) {
       if (status === 'FOR_REVIEW') {
-        // Only responsible person can mark for review
-        if (!isResponsible) {
-          return res.status(403).json({ error: 'Only assigned person can mark for review' });
+        // Responsible person or admin can mark for review
+        if (!isResponsible && !isAdmin) {
+          return res.status(403).json({ error: 'Only assigned person or admin can mark for review' });
         }
       } else if (status === 'CLOSED') {
         // Only admin can close

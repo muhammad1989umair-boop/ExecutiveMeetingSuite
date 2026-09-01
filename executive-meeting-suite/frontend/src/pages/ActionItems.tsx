@@ -428,7 +428,7 @@ export default function ActionItems() {
                   <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                     ● {item.priority}
                   </span>
-                  {item.status === 'OPEN' && user?.id === item.responsible_user_id && (
+                  {item.status === 'OPEN' && (user?.id === item.responsible_user_id || user?.role === 'CHIEF_OF_STAFF') && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
