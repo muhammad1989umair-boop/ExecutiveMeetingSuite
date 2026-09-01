@@ -45,6 +45,8 @@ export default function ActionItems() {
   const [responsiblePersonId, setResponsiblePersonId] = useState('')
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
   const [divisionalHeads, setDivisionalHeads] = useState<User[]>([])
+  const [statusUpdateModal, setStatusUpdateModal] = useState<{ itemId: string; itemTitle: string } | null>(null)
+  const [attachment, setAttachment] = useState<File | null>(null)
   const { request, loading } = useApi()
   const { user } = useAuth()
 
@@ -428,28 +430,16 @@ export default function ActionItems() {
                   <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                     ● {item.priority}
                   </span>
-                  {item.status === 'OPEN' && (user?.id === item.responsible_user_id || user?.role === 'CHIEF_OF_STAFF') && (
+                  {(item.status === 'OPEN' || item.status === 'FOR_REVIEW') && (user?.id === item.responsible_user_id || user?.role === 'CHIEF_OF_STAFF') && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleMarkForReview(item.id, item.title)
+                        setStatusUpdateModal({ itemId: item.id, itemTitle: item.title })
                       }}
-                      className="flex-shrink-0 px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm font-semibold"
-                      title="Mark for review"
+                      className="flex-shrink-0 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                      title="Update status"
                     >
-                      Mark for Review
-                    </button>
-                  )}
-                  {item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleClose(item.id, item.title)
-                      }}
-                      className="flex-shrink-0 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-semibold"
-                      title="Close action item"
-                    >
-                      Close
+                      Status Update
                     </button>
                   )}
                   <button
@@ -498,6 +488,61 @@ export default function ActionItems() {
       {filteredItems.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-slate-700">
           Showing {filteredItems.length} action item{filteredItems.length !== 1 ? 's' : ''} out of {items.length} total
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {statusUpdateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-slate-900 mb-4">Status Update</h2>
+
+            <div className="mb-4">
+              <p className="text-sm font-medium text-slate-600">Item</p>
+              <p className="text-slate-900 font-semibold">{statusUpdateModal.itemTitle}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Attachment (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+              />
+              {attachment && (
+                <p className="text-xs text-slate-500 mt-1">Selected: {attachment.name}</p>
+              )}
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setStatusUpdateModal(null)
+                  setAttachment(null)
+                }}
+                className="flex-1 px-4 py-2 bg-slate-200 text-slate-900 rounded-lg hover:bg-slate-300 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await handleMarkForReview(statusUpdateModal.itemId, statusUpdateModal.itemTitle)
+                    setStatusUpdateModal(null)
+                    setAttachment(null)
+                  } catch (error) {
+                    console.error('Error marking for review:', error)
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 font-semibold"
+              >
+                Mark for Review
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
