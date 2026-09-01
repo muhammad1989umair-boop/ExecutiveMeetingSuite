@@ -337,8 +337,7 @@ export default function ActionItems() {
               key={item.id}
               className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 group relative"
             >
-              <div className="cursor-pointer" onClick={() => {}}>
-                <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
                     {item.action_item_number && (
@@ -363,6 +362,16 @@ export default function ActionItems() {
                   <span className={`text-sm font-semibold ${getPriorityColor(item.priority)}`}>
                     ● {item.priority}
                   </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteItem(item.id, item.title)
+                    }}
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                    title="Delete action item"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
@@ -381,19 +390,6 @@ export default function ActionItems() {
                   <p className="font-semibold text-slate-900">Due In</p>
                   <p className="text-xs">{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</p>
                 </div>
-              </div>
-
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleDeleteItem(item.id, item.title)
-                }}
-                className="absolute top-4 right-4 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors z-10"
-                title="Delete action item"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
               </div>
             </div>
           ))
