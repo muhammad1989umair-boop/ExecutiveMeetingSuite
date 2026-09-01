@@ -479,8 +479,8 @@ export default function Meetings() {
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">All Companies</option>
-            {[...new Set(divisionalHeads.map(head => head.company))].map(company => (
-              <option key={company} value={company}>{company}</option>
+            {companies.map(company => (
+              <option key={company.id} value={company.name}>{company.name}</option>
             ))}
           </select>
 
