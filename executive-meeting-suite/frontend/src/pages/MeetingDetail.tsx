@@ -125,8 +125,13 @@ export default function MeetingDetail() {
     }
 
     try {
+      const titleCase = newItem.title
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+
       await request('POST', `/action-items`, {
-        title: capitalizeTitle(newItem.title),
+        title: titleCase,
         description: newItem.description,
         priority: newItem.priority,
         targetDate: newItem.dueDate || new Date().toISOString().split('T')[0],

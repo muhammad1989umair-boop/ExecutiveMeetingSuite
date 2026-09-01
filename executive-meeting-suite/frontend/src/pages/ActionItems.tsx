@@ -122,8 +122,14 @@ export default function ActionItems() {
         return
       }
 
+      const titleCase = title
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ')
+
       const response = await request('POST', '/action-items', {
-        title: capitalizeTitle(title.trim()),
+        title: titleCase,
         description: description.trim(),
         priority,
         targetDate: dueDate || new Date().toISOString().split('T')[0],
