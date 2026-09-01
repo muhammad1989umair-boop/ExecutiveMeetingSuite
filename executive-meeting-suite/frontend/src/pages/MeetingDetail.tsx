@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useApi } from '../hooks/useApi'
-import { ArrowLeft, Plus, Download, Mail, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Download, Mail, MessageCircle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
