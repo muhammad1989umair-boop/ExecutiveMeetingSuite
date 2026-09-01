@@ -155,15 +155,26 @@ export default function Meetings() {
     }
 
     if (filterCompany !== 'ALL') {
-      filtered = filtered.filter(meeting => (meeting.company_name || '').trim() === (filterCompany || '').trim())
+      filtered = filtered.filter(meeting => {
+        // Try company_name first, then fall back to matching via companies list
+        const companyName = meeting.company_name
+        if (companyName) {
+          return companyName === filterCompany
+        }
+        // If no company_name, try to find matching company by ID
+        const matchingCompany = companies.find(c =>
+          c.id === meeting.company || c.name === meeting.company
+        )
+        return matchingCompany?.name === filterCompany
+      })
     }
 
     if (filterDivision !== 'ALL') {
-      filtered = filtered.filter(meeting => (meeting.division_name || '').trim() === (filterDivision || '').trim())
+      filtered = filtered.filter(meeting => meeting.division_name === filterDivision)
     }
 
     if (filterResponsiblePerson !== 'ALL') {
-      filtered = filtered.filter(meeting => (meeting.responsible_person_name || '').trim() === (filterResponsiblePerson || '').trim())
+      filtered = filtered.filter(meeting => meeting.responsible_person_name === filterResponsiblePerson)
     }
 
     // Sort by date chronologically
