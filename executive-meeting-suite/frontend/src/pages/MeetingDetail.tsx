@@ -537,13 +537,23 @@ export default function MeetingDetail() {
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h3>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(item.status)}`}>
+                    <div className="flex items-center space-x-3 flex-shrink-0">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 ${getStatusColor(item.status)}`}>
                         {item.status}
                       </span>
-                      <span className={`text-sm font-semibold ${getPriorityColor(item.priority)}`}>
+                      <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                         ● {item.priority}
                       </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteActionItem(item.id, item.title)
+                        }}
+                        className="flex-shrink-0 p-2 bg-red-500 text-white rounded hover:bg-red-600 ml-2"
+                        title="Delete action item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                   <p className="text-slate-600 text-sm mb-3">{item.description}</p>
