@@ -155,18 +155,7 @@ export default function Meetings() {
     }
 
     if (filterCompany !== 'ALL') {
-      filtered = filtered.filter(meeting => {
-        // Try company_name first, then fall back to matching via companies list
-        const companyName = meeting.company_name
-        if (companyName) {
-          return companyName === filterCompany
-        }
-        // If no company_name, try to find matching company by ID
-        const matchingCompany = companies.find(c =>
-          c.id === meeting.company || c.name === meeting.company
-        )
-        return matchingCompany?.name === filterCompany
-      })
+      filtered = filtered.filter(meeting => meeting.company_name === filterCompany)
     }
 
     if (filterDivision !== 'ALL') {
