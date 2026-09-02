@@ -12,23 +12,23 @@ router.get('/metrics', authenticate, async (req: AuthRequest, res: Response) => 
     );
 
     const openActions = await pool.query(
-      "SELECT COUNT(*) as count FROM action_items WHERE status != 'CLOSED'"
+      "SELECT COUNT(*) as count FROM action_items WHERE status::text = 'OPEN' OR status::text = 'IN_PROGRESS' OR status::text = 'PENDING_REVIEW' OR status::text = 'FOR_REVIEW'"
     );
 
     const closedActions = await pool.query(
-      "SELECT COUNT(*) as count FROM action_items WHERE status = 'CLOSED'"
+      "SELECT COUNT(*) as count FROM action_items WHERE status::text = 'CLOSED'"
     );
 
     const pendingReview = await pool.query(
-      "SELECT COUNT(*) as count FROM action_items WHERE status = 'PENDING_REVIEW'"
+      "SELECT COUNT(*) as count FROM action_items WHERE status::text = 'PENDING_REVIEW'"
     );
 
     const forReview = await pool.query(
-      "SELECT COUNT(*) as count FROM action_items WHERE status = 'FOR_REVIEW'"
+      "SELECT COUNT(*) as count FROM action_items WHERE status::text = 'FOR_REVIEW'"
     );
 
     const overdue = await pool.query(
-      "SELECT COUNT(*) as count FROM action_items WHERE target_date < CURRENT_TIMESTAMP AND status != 'CLOSED'"
+      "SELECT COUNT(*) as count FROM action_items WHERE target_date < CURRENT_TIMESTAMP AND status::text != 'CLOSED'"
     );
 
     const byPriority = await pool.query(
