@@ -727,16 +727,17 @@ export default function MeetingDetail() {
                 </div>
               </div>
               {actionItems.map((item) => (
-                <div key={item.id} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-slate-900 mb-2">{item.title}</h3>
+                <div key={item.id} className="bg-white rounded-lg shadow p-3 hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-center gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-slate-900 truncate">{item.title}</h3>
+                      <p className="text-xs text-slate-500 truncate">{item.description}</p>
                     </div>
-                    <div className="flex items-center space-x-3 flex-shrink-0">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 ${getStatusColor(item.status)}`}>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${getStatusColor(item.status)}`}>
                         {item.status}
                       </span>
-                      <span className={`text-sm font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
+                      <span className={`text-xs font-semibold flex-shrink-0 ${getPriorityColor(item.priority)}`}>
                         ● {item.priority}
                       </span>
                       <button
@@ -744,30 +745,23 @@ export default function MeetingDetail() {
                           e.stopPropagation()
                           handleDeleteActionItem(item.id, item.title)
                         }}
-                        className="flex-shrink-0 p-2 bg-red-500 text-white rounded hover:bg-red-600 ml-2"
+                        className="flex-shrink-0 p-1 bg-red-500 text-white rounded hover:bg-red-600"
                         title="Delete action item"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
-                  <p className="text-slate-600 text-sm mb-3">{item.description}</p>
-                  <div className="grid grid-cols-3 gap-4 text-sm text-slate-600 pt-3 border-t border-slate-100">
-                    <div>
-                      <p className="font-semibold text-slate-900">{item.full_name}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-900">Target Date</p>
-                      <p className="text-xs">{new Date(item.target_date).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">Due In</p>
-                      <p className="text-xs">{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</p>
-                    </div>
+                  <div className="flex gap-2 text-xs text-slate-600 border-t border-slate-100 pt-2">
+                    <span className="font-semibold text-slate-900">{item.full_name}</span>
+                    <span>•</span>
+                    <span>{new Date(item.target_date).toLocaleDateString()}</span>
+                    <span>•</span>
+                    <span>{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</span>
                   </div>
 
                   {item.status === 'OPEN' && (
-                    <div className="flex justify-end mt-4">
+                    <div className="flex justify-end mt-2">
                       <button
                         onClick={() => {
                           setExpandedItemId(expandedItemId === item.id ? null : item.id)
@@ -775,7 +769,7 @@ export default function MeetingDetail() {
                             setStatusUpdateData({ comments: '', attachment: null })
                           }
                         }}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs font-semibold"
                         title="Update status"
                       >
                         Status Update
