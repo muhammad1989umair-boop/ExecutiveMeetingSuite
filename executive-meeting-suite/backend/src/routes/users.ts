@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../database';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import bcryptjs from 'bcryptjs';
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     const result = await pool.query(
       `SELECT id, email, full_name, title, role, division_id, phone
        FROM users
-       WHERE is_active = true
+       WHERE status = 'ACTIVE'
        ORDER BY full_name`
     );
 
@@ -96,12 +97,12 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
       return res.status(400).json({ error: 'Selected division does not exist' });
     }
 
-    // Hash password (in production, use bcrypt)
-    const hashedPassword = Buffer.from(password).toString('base64');
+    // Hash password with bcryptjs
+    const hashedPassword = await bcryptjs.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO users (email, password_hash, full_name, title, role, division_id, phone, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+      `INSERT INTO users (email, password_hash, full_name, title, role, division_id, phone, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE')
        RETURNING id, email, full_name, title, role, division_id, phone`,
       [email, hashedPassword, fullName, title, 'DIVISIONAL_HEAD', divisionId, phone]
     );
@@ -157,10 +158,10 @@ router.patch('/:id/deactivate', authenticate, authorize(['CHIEF_OF_STAFF']), asy
 
     const result = await pool.query(
       `UPDATE users
-       SET is_active = false,
+       SET status = 'INACTIVE',
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $1
-       RETURNING id, email, full_name, is_active`,
+       RETURNING id, email, full_name, status`,
       [userId]
     );
 
