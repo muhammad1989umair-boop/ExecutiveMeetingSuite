@@ -318,28 +318,21 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
 
     const items = result.rows;
 
-    // Group items by responsible person and generate temporary passwords
+    // Group items by responsible person
     const itemsByPerson = new Map<string, any[]>();
-    const passwordsByEmail = new Map<string, { userId: string; tempPassword: string }>();
 
     for (const item of items) {
       if (!itemsByPerson.has(item.email)) {
         itemsByPerson.set(item.email, []);
 
-        // Generate temporary password for this person
-        const tempPassword = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        // Set password to demo123 for all responsible persons
+        const hashedPassword = await bcrypt.hash('demo123', 10);
 
         // Update user password in database
         await pool.query(
           'UPDATE users SET password = $1 WHERE id = $2',
           [hashedPassword, item.user_id]
         );
-
-        passwordsByEmail.set(item.email, {
-          userId: item.user_id,
-          tempPassword
-        });
       }
       itemsByPerson.get(item.email)!.push(item);
     }
@@ -367,7 +360,6 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
       try {
         const person = personItems[0];
         const itemsList = personItems.map(item => `• ${item.title}`).join('\n');
-        const credentials = passwordsByEmail.get(email)!;
         const appUrl = process.env.APP_URL || 'http://localhost:5000';
 
         const emailBody = `
@@ -380,14 +372,12 @@ ${itemsList}
 ${attachments.length > 0 ? 'Please see the attached files for detailed information.' : ''}
 
 LOGIN CREDENTIALS:
-Email/User ID: ${email}
-Temporary Password: ${credentials.tempPassword}
+User ID: ${email}
+Password: demo123
 
 Access the Executive Meeting Suite here: ${appUrl}
 
 Log in with your credentials above and update the status of your action items. You will only see action items assigned to you.
-
-IMPORTANT: Please change your password after your first login for security.
 
 Best regards,
 Chief of Staff
