@@ -192,9 +192,21 @@ export default function ActionItems() {
     }
   }
 
-  const handleMarkForReview = async (id: string, title: string) => {
+  const handleMarkForReview = async (id: string, title: string, comments: string = '', attachment: File | null = null) => {
     try {
-      await request('PATCH', `/action-items/${id}`, { status: 'FOR_REVIEW' })
+      let attachmentUrl = null
+
+      // If there's an attachment, in a real app you'd upload it to a server/S3
+      // For now, we'll just use the filename as a placeholder
+      if (attachment) {
+        attachmentUrl = attachment.name
+      }
+
+      await request('PATCH', `/action-items/${id}`, {
+        status: 'FOR_REVIEW',
+        reviewComments: comments || null,
+        reviewAttachmentUrl: attachmentUrl
+      })
       toast.success('Marked for review!')
       loadActionItems()
     } catch (error: any) {
@@ -543,7 +555,7 @@ export default function ActionItems() {
                       onClick={async (e) => {
                         e.stopPropagation()
                         try {
-                          await handleMarkForReview(item.id, item.title)
+                          await handleMarkForReview(item.id, item.title, statusUpdateData.comments, statusUpdateData.attachment)
                           setExpandedItemId(null)
                           setStatusUpdateData({ comments: '', attachment: null })
                         } catch (error) {
@@ -566,7 +578,7 @@ export default function ActionItems() {
                       Comments (from responsible person)
                     </label>
                     <textarea
-                      value={statusUpdateData.comments}
+                      value={item.review_comments || ''}
                       disabled
                       placeholder="No comments provided"
                       rows={3}
@@ -579,7 +591,7 @@ export default function ActionItems() {
                       Attachment (from responsible person)
                     </label>
                     <div className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm">
-                      {statusUpdateData.attachment ? statusUpdateData.attachment.name : 'No attachment provided'}
+                      {item.review_attachment_url || 'No attachment provided'}
                     </div>
                   </div>
 

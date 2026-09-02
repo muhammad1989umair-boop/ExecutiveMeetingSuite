@@ -712,7 +712,15 @@ export default function MeetingDetail() {
                         <button
                           onClick={async () => {
                             try {
-                              await request('PATCH', `/action-items/${item.id}`, { status: 'FOR_REVIEW' })
+                              let attachmentUrl = null
+                              if (statusUpdateData.attachment) {
+                                attachmentUrl = statusUpdateData.attachment.name
+                              }
+                              await request('PATCH', `/action-items/${item.id}`, {
+                                status: 'FOR_REVIEW',
+                                reviewComments: statusUpdateData.comments || null,
+                                reviewAttachmentUrl: attachmentUrl
+                              })
                               toast.success('Marked for review!')
                               setExpandedItemId(null)
                               setStatusUpdateData({ comments: '', attachment: null })
@@ -737,7 +745,7 @@ export default function MeetingDetail() {
                           Comments (from responsible person)
                         </label>
                         <textarea
-                          value={statusUpdateData.comments}
+                          value={item.review_comments || ''}
                           disabled
                           placeholder="No comments provided"
                           rows={3}
@@ -750,7 +758,7 @@ export default function MeetingDetail() {
                           Attachment (from responsible person)
                         </label>
                         <div className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm">
-                          {statusUpdateData.attachment ? statusUpdateData.attachment.name : 'No attachment provided'}
+                          {item.review_attachment_url || 'No attachment provided'}
                         </div>
                       </div>
 

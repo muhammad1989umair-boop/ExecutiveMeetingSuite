@@ -165,7 +165,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 // Update action item status
 router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { status, title, description, priority, targetDate } = req.body;
+    const { status, title, description, priority, targetDate, reviewComments, reviewAttachmentUrl } = req.body;
     const actionItemId = req.params.id;
     const userId = req.user?.id;
     const userRole = req.user?.role;
@@ -232,6 +232,18 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     if (status) {
       updates.push(`status = $${paramCount++}`);
       values.push(status);
+
+      if (status === 'FOR_REVIEW') {
+        // Store review comments and attachment when marking for review
+        if (reviewComments !== undefined) {
+          updates.push(`review_comments = $${paramCount++}`);
+          values.push(reviewComments);
+        }
+        if (reviewAttachmentUrl !== undefined) {
+          updates.push(`review_attachment_url = $${paramCount++}`);
+          values.push(reviewAttachmentUrl);
+        }
+      }
 
       if (status === 'CLOSED') {
         updates.push(`closed_at = CURRENT_TIMESTAMP`);
