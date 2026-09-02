@@ -1,10 +1,8 @@
 import axios, { AxiosInstance } from 'axios'
 import { ApiResponse } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-
 const client: AxiosInstance = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json'
   }

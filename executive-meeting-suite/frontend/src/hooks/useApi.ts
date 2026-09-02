@@ -1,17 +1,7 @@
 import { useState, useCallback } from 'react'
 import axios from 'axios'
 
-// Dynamically determine API URL based on current location
-const getAPIURL = () => {
-  const envUrl = import.meta.env.VITE_API_URL
-  if (envUrl) return envUrl
-
-  // If no env URL, use same origin (for ngrok and production)
-  return window.location.protocol + '//' + window.location.host
-}
-
-const API_URL = getAPIURL()
-const API_BASE = `${API_URL}/api`
+const API_BASE = '/api'
 
 export const useApi = () => {
   const [loading, setLoading] = useState(false)
