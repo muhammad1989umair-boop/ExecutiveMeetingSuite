@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { pool } from '../database';
 import { AuthRequest, authorize, authenticate } from '../middleware/auth';
 import nodemailer from 'nodemailer';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -304,7 +305,7 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
 
     // Fetch action items for grouping by responsible person
     const result = await pool.query(
-      `SELECT ai.id, ai.title, ai.responsible_user_id, u.email, u.full_name
+      `SELECT ai.id, ai.title, ai.responsible_user_id, u.id as user_id, u.email, u.full_name
        FROM action_items ai
        JOIN users u ON ai.responsible_user_id = u.id
        WHERE ai.id = ANY($1)`,
@@ -317,14 +318,31 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
 
     const items = result.rows;
 
-    // Group items by responsible person
+    // Group items by responsible person and generate temporary passwords
     const itemsByPerson = new Map<string, any[]>();
-    items.forEach(item => {
+    const passwordsByEmail = new Map<string, { userId: string; tempPassword: string }>();
+
+    for (const item of items) {
       if (!itemsByPerson.has(item.email)) {
         itemsByPerson.set(item.email, []);
+
+        // Generate temporary password for this person
+        const tempPassword = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        // Update user password in database
+        await pool.query(
+          'UPDATE users SET password = $1 WHERE id = $2',
+          [hashedPassword, item.user_id]
+        );
+
+        passwordsByEmail.set(item.email, {
+          userId: item.user_id,
+          tempPassword
+        });
       }
       itemsByPerson.get(item.email)!.push(item);
-    });
+    }
 
     let successCount = 0;
     let failureCount = 0;
@@ -349,6 +367,8 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
       try {
         const person = personItems[0];
         const itemsList = personItems.map(item => `• ${item.title}`).join('\n');
+        const credentials = passwordsByEmail.get(email)!;
+        const appUrl = process.env.APP_URL || 'http://localhost:5000';
 
         const emailBody = `
 Dear ${person.full_name},
@@ -359,7 +379,15 @@ ${itemsList}
 
 ${attachments.length > 0 ? 'Please see the attached files for detailed information.' : ''}
 
-Log in to the Executive Meeting Suite to view details and submit your response.
+LOGIN CREDENTIALS:
+Email/User ID: ${email}
+Temporary Password: ${credentials.tempPassword}
+
+Access the Executive Meeting Suite here: ${appUrl}
+
+Log in with your credentials above and update the status of your action items. You will only see action items assigned to you.
+
+IMPORTANT: Please change your password after your first login for security.
 
 Best regards,
 Chief of Staff
@@ -368,7 +396,7 @@ Chief of Staff
         await transporter.sendMail({
           from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
           to: email,
-          subject: `Action Items Assignment - ${new Date().toLocaleDateString()}`,
+          subject: `Action Items Assignment & Login Instructions - ${new Date().toLocaleDateString()}`,
           text: emailBody,
           attachments: attachments
         });
