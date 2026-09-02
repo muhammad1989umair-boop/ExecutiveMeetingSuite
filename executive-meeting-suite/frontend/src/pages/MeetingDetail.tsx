@@ -47,6 +47,8 @@ export default function MeetingDetail() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
+  const [statusUpdateData, setStatusUpdateData] = useState<{ comments: string; attachment: File | null }>({ comments: '', attachment: null })
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -628,6 +630,83 @@ export default function MeetingDetail() {
                       <p className="text-xs">{Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</p>
                     </div>
                   </div>
+
+                  {(item.status === 'OPEN' || item.status === 'FOR_REVIEW') && (
+                    <div className="flex justify-end mt-4">
+                      <button
+                        onClick={() => {
+                          setExpandedItemId(expandedItemId === item.id ? null : item.id)
+                          if (expandedItemId !== item.id) {
+                            setStatusUpdateData({ comments: '', attachment: null })
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                        title="Update status"
+                      >
+                        Status Update
+                      </button>
+                    </div>
+                  )}
+
+                  {expandedItemId === item.id && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Comments
+                        </label>
+                        <textarea
+                          value={statusUpdateData.comments}
+                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, comments: e.target.value })}
+                          placeholder="Add comments about this action item..."
+                          rows={3}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Attachment (Optional)
+                        </label>
+                        <input
+                          type="file"
+                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, attachment: e.target.files?.[0] || null })}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+                        />
+                        {statusUpdateData.attachment && (
+                          <p className="text-xs text-slate-500 mt-1">Selected: {statusUpdateData.attachment.name}</p>
+                        )}
+                      </div>
+
+                      <div className="flex space-x-2 justify-end">
+                        <button
+                          onClick={() => {
+                            setExpandedItemId(null)
+                            setStatusUpdateData({ comments: '', attachment: null })
+                          }}
+                          className="px-4 py-2 bg-slate-200 text-slate-900 rounded hover:bg-slate-300 font-semibold text-sm"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await request('PATCH', `/action-items/${item.id}`, { status: 'FOR_REVIEW' })
+                              toast.success('Marked for review!')
+                              setExpandedItemId(null)
+                              setStatusUpdateData({ comments: '', attachment: null })
+                              loadMeetingAndItems()
+                            } catch (error: any) {
+                              toast.error(error?.message || 'Failed to mark for review')
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-sm"
+                        >
+                          Mark for Review
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
