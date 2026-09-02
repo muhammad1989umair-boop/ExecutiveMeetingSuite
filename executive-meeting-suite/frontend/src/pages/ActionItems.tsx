@@ -558,104 +558,82 @@ export default function ActionItems() {
                 </div>
               )}
 
-              {/* Dialog for reviewing FOR_REVIEW items */}
+              {/* Inline form for reviewing FOR_REVIEW items */}
               {expandedItemId === item.id && item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-96 overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-xl font-bold text-slate-900">Review Before Closure</h2>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
+                <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Comments
+                    </label>
+                    <textarea
+                      value={statusUpdateData.comments}
+                      onChange={(e) => setStatusUpdateData({ ...statusUpdateData, comments: e.target.value })}
+                      placeholder="Add comments about this action item..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Attachment (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      onChange={(e) => setStatusUpdateData({ ...statusUpdateData, attachment: e.target.files?.[0] || null })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
+                    />
+                    {statusUpdateData.attachment && (
+                      <p className="text-xs text-slate-500 mt-1">Selected: {statusUpdateData.attachment.name}</p>
+                    )}
+                  </div>
+
+                  <div className="flex space-x-2 justify-end">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setExpandedItemId(null)
+                        setStatusUpdateData({ comments: '', attachment: null })
+                      }}
+                      className="px-4 py-2 bg-slate-200 text-slate-900 rounded hover:bg-slate-300 font-semibold text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        try {
+                          await request('PATCH', `/action-items/${item.id}`, { status: 'OPEN' })
+                          toast.success('Sent back to responsible person!')
                           setExpandedItemId(null)
                           setStatusUpdateData({ comments: '', attachment: null })
-                        }}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <div className="mb-6 pb-4 border-b border-slate-200">
-                      <p className="text-sm font-medium text-slate-700">Item: <span className="font-semibold">{item.title}</span></p>
-                    </div>
-
-                    <div className="space-y-4 mb-6">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Comments
-                        </label>
-                        <textarea
-                          value={statusUpdateData.comments}
-                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, comments: e.target.value })}
-                          placeholder="Add comments about this action item..."
-                          rows={4}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Attachment (Optional)
-                        </label>
-                        <input
-                          type="file"
-                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, attachment: e.target.files?.[0] || null })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
-                        />
-                        {statusUpdateData.attachment && (
-                          <p className="text-xs text-slate-500 mt-1">Selected: {statusUpdateData.attachment.name}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-3 justify-end">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
+                          loadActionItems()
+                        } catch (error: any) {
+                          toast.error(error?.message || 'Failed to send back')
+                        }
+                      }}
+                      className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-semibold text-sm"
+                    >
+                      Send Back
+                    </button>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        try {
+                          await request('PATCH', `/action-items/${item.id}`, { status: 'CLOSED' })
+                          toast.success('Action item closed!')
                           setExpandedItemId(null)
                           setStatusUpdateData({ comments: '', attachment: null })
-                        }}
-                        className="px-4 py-2 bg-slate-200 text-slate-900 rounded hover:bg-slate-300 font-semibold text-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          try {
-                            await request('PATCH', `/action-items/${item.id}`, { status: 'OPEN' })
-                            toast.success('Sent back to responsible person!')
-                            setExpandedItemId(null)
-                            setStatusUpdateData({ comments: '', attachment: null })
-                            loadActionItems()
-                          } catch (error: any) {
-                            toast.error(error?.message || 'Failed to send back')
-                          }
-                        }}
-                        className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-semibold text-sm"
-                      >
-                        Send Back
-                      </button>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          try {
-                            await request('PATCH', `/action-items/${item.id}`, { status: 'CLOSED' })
-                            toast.success('Action item closed!')
-                            setExpandedItemId(null)
-                            setStatusUpdateData({ comments: '', attachment: null })
-                            loadActionItems()
-                          } catch (error: any) {
-                            toast.error(error?.message || 'Failed to close')
-                          }
-                        }}
-                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold text-sm"
-                      >
-                        Close
-                      </button>
-                    </div>
+                          loadActionItems()
+                        } catch (error: any) {
+                          toast.error(error?.message || 'Failed to close')
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold text-sm"
+                    >
+                      Close
+                    </button>
                   </div>
                 </div>
               )}
