@@ -322,7 +322,7 @@ export default function MeetingDetail() {
     }
 
     try {
-      // Generate Excel file same as download
+      // Generate Excel file same as downloadExcel
       const excelData = actionItems.map(item => ({
         'Title': item.title,
         'Description': item.description,
@@ -338,30 +338,108 @@ export default function MeetingDetail() {
       const excelArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
       const excelBase64 = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(excelArrayBuffer))))
 
-      // Generate PDF file same as download
-      const pdfBuffer = await new Promise<string>((resolve) => {
+      // Generate PDF file with same format as downloadPDF
+      const pdfBase64 = await new Promise<string>((resolve) => {
         const doc = new jsPDF()
-        doc.setFontSize(16)
-        doc.text(`Action Items from ${meeting?.title}`, 14, 22)
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const pageHeight = doc.internal.pageSize.getHeight()
+        const margin = 12
+        const maxWidth = pageWidth - (margin * 2)
+        let yPosition = margin
 
-        let yPos = 35
-        actionItems.forEach((item, index) => {
-          if (yPos > 270) {
+        // Title
+        doc.setFontSize(18)
+        doc.setTextColor(33, 33, 33)
+        doc.setFont(undefined, 'bold')
+        doc.text('EXECUTIVE MEETING MINUTES', pageWidth / 2, yPosition, { align: 'center' })
+        yPosition += 12
+
+        // Meeting Details Section
+        doc.setFontSize(10)
+        doc.setTextColor(59, 130, 246)
+        doc.setFont(undefined, 'bold')
+        doc.text('Meeting Details', margin, yPosition)
+        yPosition += 6
+
+        doc.setFontSize(9)
+        doc.setTextColor(33, 33, 33)
+        doc.setFont(undefined, 'normal')
+        doc.text(`Meeting/Project Name:  ${meeting?.title}`, margin, yPosition)
+        yPosition += 5
+        doc.text(`Location:  ${meeting?.location}`, margin, yPosition)
+        yPosition += 5
+        doc.text(`Time:  ${new Date().toLocaleTimeString()}`, margin, yPosition)
+        yPosition += 5
+        doc.text(`Generated:  ${new Date().toLocaleDateString()}`, margin, yPosition)
+        yPosition += 8
+
+        // Action Items Summary Section
+        doc.setFontSize(10)
+        doc.setTextColor(59, 130, 246)
+        doc.setFont(undefined, 'bold')
+        doc.text('Action Items Summary', margin, yPosition)
+        yPosition += 6
+
+        doc.setFontSize(9)
+        doc.setTextColor(33, 33, 33)
+        doc.setFont(undefined, 'normal')
+        doc.text(`Total Items: ${actionItems.length}  |  Open: ${actionItems.filter(i => i.status === 'OPEN').length}  |  In Progress: ${actionItems.filter(i => i.status === 'IN_PROGRESS').length}  |  Completed: ${actionItems.filter(i => i.status === 'COMPLETED').length}`, margin, yPosition)
+        yPosition += 10
+
+        // Action Items Section
+        doc.setFontSize(10)
+        doc.setTextColor(59, 130, 246)
+        doc.setFont(undefined, 'bold')
+        doc.text('Action Items', margin, yPosition)
+        yPosition += 8
+
+        // Action Items List with Descriptions
+        doc.setFontSize(9)
+
+        actionItems.forEach((item, idx) => {
+          if (yPosition > pageHeight - 20) {
             doc.addPage()
-            yPos = 20
+            yPosition = margin
           }
-          doc.setFontSize(12)
-          doc.text(`${index + 1}. ${item.title}`, 14, yPos)
-          yPos += 8
 
-          doc.setFontSize(10)
-          doc.text(`Description: ${item.description}`, 14, yPos)
-          yPos += 6
-          doc.text(`Status: ${item.status} | Priority: ${item.priority}`, 14, yPos)
-          yPos += 6
-          doc.text(`Target Date: ${new Date(item.target_date).toLocaleDateString()} | Responsible: ${item.full_name}`, 14, yPos)
-          yPos += 8
+          // Item number and title (BOLD)
+          doc.setFont(undefined, 'bold')
+          doc.setTextColor(33, 33, 33)
+          const titleText = doc.splitTextToSize(`${idx + 1}. ${item.title}`, maxWidth - 4)
+          doc.text(titleText, margin + 2, yPosition)
+          yPosition += titleText.length * 5 + 1
+
+          // Description
+          doc.setFont(undefined, 'normal')
+          doc.setTextColor(107, 114, 128)
+          doc.setFontSize(8)
+          const descText = doc.splitTextToSize(`Description: ${item.description}`, maxWidth - 4)
+          doc.text(descText, margin + 2, yPosition)
+          yPosition += descText.length * 4 + 1
+
+          // Details row
+          doc.setFontSize(8)
+          doc.setTextColor(55, 65, 81)
+          const daysRemaining = Math.max(0, Math.ceil((new Date(item.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+          const detailsText = `Responsible Person: ${item.full_name}  |  Priority: ${item.priority}  |  Due Date: ${new Date(item.target_date).toLocaleDateString()}  |  Days Remaining: ${daysRemaining}`
+          doc.text(detailsText, margin + 2, yPosition)
+          yPosition += 5
+
+          // Separator line
+          doc.setDrawColor(229, 231, 235)
+          doc.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2)
+          yPosition += 6
         })
+
+        // Footer on all pages
+        const pageCount = doc.getNumberOfPages()
+        for (let i = 1; i <= pageCount; i++) {
+          doc.setPage(i)
+          doc.setFontSize(8)
+          doc.setTextColor(156, 163, 175)
+          doc.setFont(undefined, 'normal')
+          doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' })
+        }
 
         resolve(doc.output('datauristring').split(',')[1])
       })
@@ -370,7 +448,7 @@ export default function MeetingDetail() {
       const response = await request('POST', '/action-items/send-emails', {
         actionItemIds,
         excelBase64,
-        pdfBase64: pdfBuffer
+        pdfBase64
       })
 
       if (response.successCount > 0) {
