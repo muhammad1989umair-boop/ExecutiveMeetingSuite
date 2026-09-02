@@ -92,8 +92,8 @@ async function seedDemoData() {
     for (const company of companies) {
       try {
         await pool.query(
-          `INSERT INTO companies (name, description) VALUES ($1, $2)`,
-          [company, `${company} company`]
+          `INSERT INTO companies (name) VALUES ($1) ON CONFLICT DO NOTHING`,
+          [company]
         );
       } catch (err: any) {
         // Ignore if company already exists
@@ -160,8 +160,8 @@ async function seedDemoData() {
 
     for (const [email, fullName, title, role, divisionId] of users) {
       await pool.query(
-        `INSERT INTO users (email, password_hash, full_name, title, role, division_id, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, true)
+        `INSERT INTO users (email, password_hash, full_name, title, role, division_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (email) DO NOTHING`,
         [email, hashedPassword, fullName, title, role, divisionId]
       );

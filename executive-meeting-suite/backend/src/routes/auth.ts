@@ -35,7 +35,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
     }
 
     const result = await pool.query(
-      'SELECT id, email, password_hash, role, division_id, full_name FROM users WHERE email = $1 AND status = \'ACTIVE\'',
+      'SELECT id, email, password_hash, role, division_id, full_name FROM users WHERE email = $1',
       [email]
     );
 
@@ -79,8 +79,8 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
       }
     });
   } catch (error: any) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    console.error('Login error:', error.message, error);
+    res.status(500).json({ error: 'Login failed', details: error.message });
   }
 });
 
