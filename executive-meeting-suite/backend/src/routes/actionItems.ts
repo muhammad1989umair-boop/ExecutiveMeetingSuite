@@ -2,8 +2,6 @@ import { Router, Request, Response } from 'express';
 import { pool } from '../database';
 import { AuthRequest, authorize, authenticate } from '../middleware/auth';
 import nodemailer from 'nodemailer';
-import * as XLSX from 'xlsx';
-import PDFDocument from 'pdfkit';
 
 const router = Router();
 
@@ -295,19 +293,18 @@ router.delete('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: R
   }
 });
 
-// Send emails to action items with Excel and PDF attachments
+// Send emails to action items with attachments
 router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
   try {
-    const { actionItemIds } = req.body;
+    const { actionItemIds, excelBase64, pdfBase64 } = req.body;
 
     if (!actionItemIds || !Array.isArray(actionItemIds) || actionItemIds.length === 0) {
       return res.status(400).json({ error: 'No action items selected' });
     }
 
-    // Fetch all action items with details
+    // Fetch action items for grouping by responsible person
     const result = await pool.query(
-      `SELECT ai.id, ai.title, ai.description, ai.priority, ai.target_date,
-              ai.responsible_user_id, u.email, u.full_name
+      `SELECT ai.id, ai.title, ai.responsible_user_id, u.email, u.full_name
        FROM action_items ai
        JOIN users u ON ai.responsible_user_id = u.id
        WHERE ai.id = ANY($1)`,
@@ -320,7 +317,7 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
 
     const items = result.rows;
 
-    // Group items by responsible person to avoid duplicate emails
+    // Group items by responsible person
     const itemsByPerson = new Map<string, any[]>();
     items.forEach(item => {
       if (!itemsByPerson.has(item.email)) {
@@ -332,43 +329,20 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
     let successCount = 0;
     let failureCount = 0;
 
-    // Generate Excel file buffer
-    const excelData = items.map(item => ({
-      'Title': item.title,
-      'Description': item.description,
-      'Priority': item.priority,
-      'Target Date': new Date(item.target_date).toLocaleDateString(),
-      'Assigned To': item.full_name
-    }));
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Action Items');
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
-
-    // Generate PDF file buffer
-    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      const doc = new PDFDocument();
-
-      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
-
-      doc.fontSize(16).text('Action Items Report', { align: 'center' });
-      doc.moveDown();
-
-      items.forEach((item, index) => {
-        doc.fontSize(12).text(`${index + 1}. ${item.title}`, { underline: true });
-        doc.fontSize(10);
-        doc.text(`Description: ${item.description}`);
-        doc.text(`Priority: ${item.priority}`);
-        doc.text(`Target Date: ${new Date(item.target_date).toLocaleDateString()}`);
-        doc.text(`Assigned To: ${item.full_name}`);
-        doc.moveDown();
+    // Prepare attachments from base64 data if provided
+    const attachments = [];
+    if (excelBase64) {
+      attachments.push({
+        filename: `Action_Items_${new Date().getTime()}.xlsx`,
+        content: Buffer.from(excelBase64, 'base64')
       });
-
-      doc.end();
-    });
+    }
+    if (pdfBase64) {
+      attachments.push({
+        filename: `Action_Items_${new Date().getTime()}.pdf`,
+        content: Buffer.from(pdfBase64, 'base64')
+      });
+    }
 
     // Send email to each person with their assigned items
     for (const [email, personItems] of itemsByPerson.entries()) {
@@ -383,7 +357,7 @@ The following action items have been assigned to you:
 
 ${itemsList}
 
-Please see the attached Excel and PDF files for detailed information.
+${attachments.length > 0 ? 'Please see the attached files for detailed information.' : ''}
 
 Log in to the Executive Meeting Suite to view details and submit your response.
 
@@ -396,16 +370,7 @@ Chief of Staff
           to: email,
           subject: `Action Items Assignment - ${new Date().toLocaleDateString()}`,
           text: emailBody,
-          attachments: [
-            {
-              filename: `Action_Items_${new Date().getTime()}.xlsx`,
-              content: excelBuffer
-            },
-            {
-              filename: `Action_Items_${new Date().getTime()}.pdf`,
-              content: pdfBuffer
-            }
-          ]
+          attachments: attachments
         });
 
         // Log email for each item

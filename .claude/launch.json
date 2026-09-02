@@ -2,11 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Executive Meeting Suite",
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 3000,
+      "cwd": "executive-meeting-suite/backend"
+    },
+    {
+      "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 5173,
-      "url": "http://localhost:5173"
+      "port": 5001,
+      "cwd": "executive-meeting-suite/frontend"
     }
   ]
 }

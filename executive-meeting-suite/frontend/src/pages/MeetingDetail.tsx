@@ -322,8 +322,56 @@ export default function MeetingDetail() {
     }
 
     try {
+      // Generate Excel file same as download
+      const excelData = actionItems.map(item => ({
+        'Title': item.title,
+        'Description': item.description,
+        'Responsible Person': item.full_name,
+        'Status': item.status,
+        'Priority': item.priority,
+        'Target Date': new Date(item.target_date).toLocaleDateString(),
+        'Division': item.division_name
+      }))
+      const ws = XLSX.utils.json_to_sheet(excelData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Action Items')
+      const excelArrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      const excelBase64 = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(excelArrayBuffer))))
+
+      // Generate PDF file same as download
+      const pdfBuffer = await new Promise<string>((resolve) => {
+        const doc = new jsPDF()
+        doc.setFontSize(16)
+        doc.text(`Action Items from ${meeting?.title}`, 14, 22)
+
+        let yPos = 35
+        actionItems.forEach((item, index) => {
+          if (yPos > 270) {
+            doc.addPage()
+            yPos = 20
+          }
+          doc.setFontSize(12)
+          doc.text(`${index + 1}. ${item.title}`, 14, yPos)
+          yPos += 8
+
+          doc.setFontSize(10)
+          doc.text(`Description: ${item.description}`, 14, yPos)
+          yPos += 6
+          doc.text(`Status: ${item.status} | Priority: ${item.priority}`, 14, yPos)
+          yPos += 6
+          doc.text(`Target Date: ${new Date(item.target_date).toLocaleDateString()} | Responsible: ${item.full_name}`, 14, yPos)
+          yPos += 8
+        })
+
+        resolve(doc.output('datauristring').split(',')[1])
+      })
+
       const actionItemIds = actionItems.map(item => item.id)
-      const response = await request('POST', '/action-items/send-emails', { actionItemIds })
+      const response = await request('POST', '/action-items/send-emails', {
+        actionItemIds,
+        excelBase64,
+        pdfBase64: pdfBuffer
+      })
 
       if (response.successCount > 0) {
         toast.success(`Emails sent to ${response.successCount} responsible person(s)!`)
