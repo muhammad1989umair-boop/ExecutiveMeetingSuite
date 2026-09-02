@@ -34,52 +34,6 @@ router.post('/', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRe
 
     const actionItem = result.rows[0];
 
-    // Get responsible user email
-    const userResult = await pool.query('SELECT email, full_name FROM users WHERE id = $1', [responsibleUserId]);
-    const responsible = userResult.rows[0];
-
-    // Send email asynchronously (non-blocking)
-    if (responsible) {
-      const emailBody = `
-Dear ${responsible.full_name},
-
-A new action item has been assigned to you:
-
-Title: ${title}
-Description: ${description}
-Target Date: ${new Date(targetDate).toLocaleDateString()}
-Priority: ${priority}
-
-Please log in to the Executive Meeting Suite to view details and submit your response.
-
-Best regards,
-Chief of Staff
-      `;
-
-      // Send email without awaiting, but handle errors properly
-      (async () => {
-        try {
-          await transporter.sendMail({
-            from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
-            to: responsible.email,
-            subject: `Action Item: ${title}`,
-            text: emailBody
-          });
-
-          await pool.query(
-            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status) VALUES ($1, $2, $3, $4)',
-            [actionItem.id, responsible.email, `Action Item: ${title}`, 'SENT']
-          );
-        } catch (err: any) {
-          console.error('Email send error:', err);
-          pool.query(
-            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status, error_message) VALUES ($1, $2, $3, $4, $5)',
-            [actionItem.id, responsible.email, `Action Item: ${title}`, 'FAILED', err.message]
-          ).catch(() => {});
-        }
-      })();
-    }
-
     res.status(201).json({
       message: 'Action item created',
       actionItem
@@ -336,6 +290,87 @@ router.delete('/:id', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: R
   } catch (error: any) {
     console.error('Error deleting action item:', error);
     res.status(500).json({ error: 'Failed to delete action item' });
+  }
+});
+
+// Send emails to action items
+router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (req: AuthRequest, res: Response) => {
+  try {
+    const { actionItemIds } = req.body;
+
+    if (!actionItemIds || !Array.isArray(actionItemIds) || actionItemIds.length === 0) {
+      return res.status(400).json({ error: 'No action items selected' });
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    // Send email for each action item
+    for (const itemId of actionItemIds) {
+      try {
+        const result = await pool.query(
+          `SELECT ai.id, ai.title, ai.description, ai.priority, ai.target_date,
+                  u.email, u.full_name
+           FROM action_items ai
+           JOIN users u ON ai.responsible_user_id = u.id
+           WHERE ai.id = $1`,
+          [itemId]
+        );
+
+        if (result.rows.length === 0) {
+          failureCount++;
+          continue;
+        }
+
+        const item = result.rows[0];
+        const emailBody = `
+Dear ${item.full_name},
+
+A new action item has been assigned to you:
+
+Title: ${item.title}
+Description: ${item.description}
+Target Date: ${new Date(item.target_date).toLocaleDateString()}
+Priority: ${item.priority}
+
+Please log in to the Executive Meeting Suite to view details and submit your response.
+
+Best regards,
+Chief of Staff
+        `;
+
+        await transporter.sendMail({
+          from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
+          to: item.email,
+          subject: `Action Item: ${item.title}`,
+          text: emailBody
+        });
+
+        await pool.query(
+          'INSERT INTO email_logs (action_item_id, recipient_email, subject, status) VALUES ($1, $2, $3, $4)',
+          [itemId, item.email, `Action Item: ${item.title}`, 'SENT']
+        );
+
+        successCount++;
+      } catch (err: any) {
+        console.error('Email send error:', err);
+        failureCount++;
+        await pool.query(
+          'INSERT INTO email_logs (action_item_id, recipient_email, subject, status, error_message) VALUES ($1, $2, $3, $4, $5)',
+          [itemId, '', 'Action Item', 'FAILED', err.message]
+        ).catch(() => {});
+      }
+    }
+
+    res.json({
+      message: `Emails sent successfully`,
+      successCount,
+      failureCount,
+      total: actionItemIds.length
+    });
+  } catch (error: any) {
+    console.error('Error sending emails:', error);
+    res.status(500).json({ error: 'Failed to send emails' });
   }
 });
 
