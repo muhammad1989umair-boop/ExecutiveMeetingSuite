@@ -96,6 +96,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
     let query = `SELECT ai.id, ai.action_item_number, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
                         ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
                         ai.created_by, ai.created_at, ai.updated_at,
+                        ai.review_comments, ai.review_attachment_url,
                         u.full_name, u.email,
                         d.name as division_name,
                         m.meeting_number, m.title as meeting_title
@@ -141,6 +142,7 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
       `SELECT ai.id, ai.action_item_number, ai.meeting_id, ai.title, ai.description, ai.priority, ai.status,
               ai.target_date, ai.responsible_user_id, ai.responsible_division_id,
               ai.created_by, ai.created_at, ai.updated_at,
+              ai.review_comments, ai.review_attachment_url,
               u.full_name, u.email,
               d.name as division_name,
               m.meeting_number, m.title as meeting_title
