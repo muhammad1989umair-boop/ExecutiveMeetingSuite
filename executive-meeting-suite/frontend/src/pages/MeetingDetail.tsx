@@ -667,7 +667,8 @@ export default function MeetingDetail() {
                     </div>
                   )}
 
-                  {expandedItemId === item.id && (
+                  {/* Inline Status Update Form for OPEN items */}
+                  {expandedItemId === item.id && item.status === 'OPEN' && (
                     <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -708,61 +709,84 @@ export default function MeetingDetail() {
                           Cancel
                         </button>
 
-                        {item.status === 'OPEN' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await request('PATCH', `/action-items/${item.id}`, { status: 'FOR_REVIEW' })
+                              toast.success('Marked for review!')
+                              setExpandedItemId(null)
+                              setStatusUpdateData({ comments: '', attachment: null })
+                              loadMeetingAndItems()
+                            } catch (error: any) {
+                              toast.error(error?.message || 'Failed to mark for review')
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-sm"
+                        >
+                          Mark for Review
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dialog for reviewing FOR_REVIEW items */}
+                  {expandedItemId === item.id && item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h2 className="text-xl font-bold text-slate-900 mb-4">Review Before Closure</h2>
+
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-slate-600">Item: {item.title}</p>
+                        </div>
+
+                        <div className="mb-4 p-3 bg-slate-50 rounded border border-slate-200">
+                          <p className="text-sm font-medium text-slate-700 mb-2">Submitted Information:</p>
+                          <p className="text-sm text-slate-600">Attachment and comments from responsible person</p>
+                        </div>
+
+                        <div className="flex space-x-3 justify-end">
+                          <button
+                            onClick={() => {
+                              setExpandedItemId(null)
+                              setStatusUpdateData({ comments: '', attachment: null })
+                            }}
+                            className="px-4 py-2 bg-slate-200 text-slate-900 rounded hover:bg-slate-300 font-semibold text-sm"
+                          >
+                            Cancel
+                          </button>
                           <button
                             onClick={async () => {
                               try {
-                                await request('PATCH', `/action-items/${item.id}`, { status: 'FOR_REVIEW' })
-                                toast.success('Marked for review!')
+                                await request('PATCH', `/action-items/${item.id}`, { status: 'OPEN' })
+                                toast.success('Sent back to responsible person!')
                                 setExpandedItemId(null)
                                 setStatusUpdateData({ comments: '', attachment: null })
                                 loadMeetingAndItems()
                               } catch (error: any) {
-                                toast.error(error?.message || 'Failed to mark for review')
+                                toast.error(error?.message || 'Failed to send back')
                               }
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-sm"
+                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-semibold text-sm"
                           >
-                            Mark for Review
+                            Send Back
                           </button>
-                        )}
-
-                        {item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
-                          <>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await request('PATCH', `/action-items/${item.id}`, { status: 'OPEN' })
-                                  toast.success('Sent back to responsible person!')
-                                  setExpandedItemId(null)
-                                  setStatusUpdateData({ comments: '', attachment: null })
-                                  loadMeetingAndItems()
-                                } catch (error: any) {
-                                  toast.error(error?.message || 'Failed to send back')
-                                }
-                              }}
-                              className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-semibold text-sm"
-                            >
-                              Send Back
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await request('PATCH', `/action-items/${item.id}`, { status: 'CLOSED' })
-                                  toast.success('Action item closed!')
-                                  setExpandedItemId(null)
-                                  setStatusUpdateData({ comments: '', attachment: null })
-                                  loadMeetingAndItems()
-                                } catch (error: any) {
-                                  toast.error(error?.message || 'Failed to close')
-                                }
-                              }}
-                              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold text-sm"
-                            >
-                              Close
-                            </button>
-                          </>
-                        )}
+                          <button
+                            onClick={async () => {
+                              try {
+                                await request('PATCH', `/action-items/${item.id}`, { status: 'CLOSED' })
+                                toast.success('Action item closed!')
+                                setExpandedItemId(null)
+                                setStatusUpdateData({ comments: '', attachment: null })
+                                loadMeetingAndItems()
+                              } catch (error: any) {
+                                toast.error(error?.message || 'Failed to close')
+                              }
+                            }}
+                            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold text-sm"
+                          >
+                            Close
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
