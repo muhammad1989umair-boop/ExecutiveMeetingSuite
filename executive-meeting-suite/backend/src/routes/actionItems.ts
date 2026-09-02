@@ -244,7 +244,8 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       actionItem: result.rows[0]
     });
   } catch (error: any) {
-    res.status(500).json({ error: 'Failed to update action item' });
+    console.error('PATCH action item error:', error.message, error);
+    res.status(500).json({ error: 'Failed to update action item', details: error.message });
   }
 });
 
