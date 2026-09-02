@@ -67,6 +67,36 @@ async function initializeDatabase() {
       const schema = fs.readFileSync(path.join(__dirname, 'database/schema.sql'), 'utf8');
       await pool.query(schema);
       console.log('✓ Database schema created');
+    } else {
+      // Check if email_logs table has correct columns, if not, recreate it
+      try {
+        await pool.query(`SELECT to_email FROM email_logs LIMIT 1`);
+      } catch (err: any) {
+        if (err.message.includes('to_email')) {
+          console.log('Fixing email_logs table structure...');
+          await pool.query('DROP TABLE IF EXISTS email_logs CASCADE');
+          const emailLogsSQL = `
+            CREATE TABLE email_logs (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              to_email VARCHAR(255) NOT NULL,
+              subject VARCHAR(500),
+              template_type VARCHAR(100),
+              status VARCHAR(50) DEFAULT 'QUEUED',
+              error_message TEXT,
+              action_item_id UUID REFERENCES action_items(id) ON DELETE SET NULL,
+              meeting_id UUID REFERENCES meetings(id) ON DELETE SET NULL,
+              user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+              sent_at TIMESTAMP,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_email_logs_user_id ON email_logs(user_id);
+            CREATE INDEX idx_email_logs_status ON email_logs(status);
+            CREATE INDEX idx_email_logs_created_at ON email_logs(created_at);
+          `;
+          await pool.query(emailLogsSQL);
+          console.log('✓ Email logs table fixed');
+        }
+      }
     }
 
     // Always seed companies and base data
