@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../context/AuthContext'
+import { useStore } from '../store'
 import toast from 'react-hot-toast'
 import { Plus, Calendar, MapPin, Users, X, Trash2 } from 'lucide-react'
 
@@ -222,6 +223,7 @@ export default function Meetings() {
       try {
         await request('DELETE', `/meetings/${id}`)
         toast.success('Meeting deleted successfully!')
+        useStore.getState().clearDashboard()
         loadMeetings()
       } catch (error) {
         toast.error('Failed to delete meeting')

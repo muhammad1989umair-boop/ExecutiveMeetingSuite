@@ -47,6 +47,7 @@ interface Store {
   addMeeting: (meeting: Meeting) => void
   addActionItem: (item: ActionItem) => void
   updateActionItem: (id: string, updates: Partial<ActionItem>) => void
+  clearDashboard: () => void
 }
 
 export const useStore = create<Store>((set) => ({
@@ -66,5 +67,6 @@ export const useStore = create<Store>((set) => ({
     actionItems: state.actionItems.map((item) =>
       item.id === id ? { ...item, ...updates } : item
     )
-  }))
+  })),
+  clearDashboard: () => set({ dashboard: null })
 }))

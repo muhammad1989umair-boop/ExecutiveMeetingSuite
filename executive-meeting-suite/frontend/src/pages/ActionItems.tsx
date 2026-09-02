@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../context/AuthContext'
+import { useStore } from '../store'
 import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -187,6 +188,7 @@ export default function ActionItems() {
       try {
         await request('DELETE', `/action-items/${id}`)
         toast.success('Action item deleted successfully!')
+        useStore.getState().clearDashboard()
         loadActionItems()
       } catch (error) {
         toast.error('Failed to delete action item')
