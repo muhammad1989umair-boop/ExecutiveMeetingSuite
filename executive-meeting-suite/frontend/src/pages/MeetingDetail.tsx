@@ -734,30 +734,24 @@ export default function MeetingDetail() {
                     <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Comments
+                          Comments (from responsible person)
                         </label>
                         <textarea
                           value={statusUpdateData.comments}
-                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, comments: e.target.value })}
-                          placeholder="Add comments about this action item..."
+                          disabled
+                          placeholder="No comments provided"
                           rows={3}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm cursor-not-allowed"
                         />
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Attachment (Optional)
+                          Attachment (from responsible person)
                         </label>
-                        <input
-                          type="file"
-                          onChange={(e) => setStatusUpdateData({ ...statusUpdateData, attachment: e.target.files?.[0] || null })}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png"
-                        />
-                        {statusUpdateData.attachment && (
-                          <p className="text-xs text-slate-500 mt-1">Selected: {statusUpdateData.attachment.name}</p>
-                        )}
+                        <div className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm">
+                          {statusUpdateData.attachment ? statusUpdateData.attachment.name : 'No attachment provided'}
+                        </div>
                       </div>
 
                       <div className="flex space-x-2 justify-end">
