@@ -12,29 +12,17 @@ export interface AuthRequest extends Request {
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+    const token = req.headers.authorization?.substring(7);
+    if (!token) return res.status(401).json({ error: 'No token' });
 
-    const token = authHeader.substring(7);
     const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      console.error('FATAL: JWT_SECRET not configured');
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
+    if (!secret) return res.status(500).json({ error: 'Config error' });
+
     const decoded = jwt.verify(token, secret) as any;
-
-    req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      divisionId: decoded.divisionId
-    };
-
+    req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
 
