@@ -461,7 +461,7 @@ export default function ActionItems() {
               </div>
 
               {/* Status Update Button at Bottom Right */}
-              {(item.status === 'OPEN' || item.status === 'FOR_REVIEW') && (user?.id === item.responsible_user_id || user?.role === 'CHIEF_OF_STAFF') && (
+              {item.status === 'OPEN' && (user?.id === item.responsible_user_id || user?.role === 'CHIEF_OF_STAFF') && (
                 <div className="flex justify-end mt-4">
                   <button
                     onClick={(e) => {
@@ -475,6 +475,24 @@ export default function ActionItems() {
                     title="Update status"
                   >
                     Status Update
+                  </button>
+                </div>
+              )}
+
+              {item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
+                <div className="flex justify-end mt-4 space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setExpandedItemId(expandedItemId === item.id ? null : item.id)
+                      if (expandedItemId !== item.id) {
+                        setStatusUpdateData({ comments: '', attachment: null })
+                      }
+                    }}
+                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-semibold"
+                    title="Review and close or send back"
+                  >
+                    Admin Review
                   </button>
                 </div>
               )}
@@ -521,21 +539,62 @@ export default function ActionItems() {
                     >
                       Cancel
                     </button>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        try {
-                          await handleMarkForReview(item.id, item.title)
-                          setExpandedItemId(null)
-                          setStatusUpdateData({ comments: '', attachment: null })
-                        } catch (error) {
-                          console.error('Error marking for review:', error)
-                        }
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-sm"
-                    >
-                      Mark for Review
-                    </button>
+                    {item.status === 'OPEN' && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          try {
+                            await handleMarkForReview(item.id, item.title)
+                            setExpandedItemId(null)
+                            setStatusUpdateData({ comments: '', attachment: null })
+                          } catch (error) {
+                            console.error('Error marking for review:', error)
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold text-sm"
+                      >
+                        Mark for Review
+                      </button>
+                    )}
+
+                    {item.status === 'FOR_REVIEW' && user?.role === 'CHIEF_OF_STAFF' && (
+                      <>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            try {
+                              await request('PATCH', `/action-items/${item.id}`, { status: 'OPEN' })
+                              toast.success('Sent back to responsible person!')
+                              setExpandedItemId(null)
+                              setStatusUpdateData({ comments: '', attachment: null })
+                              loadActionItems()
+                            } catch (error: any) {
+                              toast.error(error?.message || 'Failed to send back')
+                            }
+                          }}
+                          className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 font-semibold text-sm"
+                        >
+                          Send Back
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            try {
+                              await request('PATCH', `/action-items/${item.id}`, { status: 'CLOSED' })
+                              toast.success('Action item closed!')
+                              setExpandedItemId(null)
+                              setStatusUpdateData({ comments: '', attachment: null })
+                              loadActionItems()
+                            } catch (error: any) {
+                              toast.error(error?.message || 'Failed to close')
+                            }
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold text-sm"
+                        >
+                          Close
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

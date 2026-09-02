@@ -192,6 +192,11 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
         if (!isAdmin) {
           return res.status(403).json({ error: 'Only admin can close action items' });
         }
+      } else if (status === 'OPEN') {
+        // Only admin can send back to open
+        if (!isAdmin) {
+          return res.status(403).json({ error: 'Only admin can send back to open' });
+        }
       }
     }
 
