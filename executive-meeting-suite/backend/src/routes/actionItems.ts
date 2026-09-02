@@ -123,7 +123,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    query += ` ORDER BY ai.target_date ASC LIMIT 100`;
+    query += ` ORDER BY CASE WHEN ai.status = 'CLOSED' THEN 1 ELSE 0 END, ai.target_date ASC LIMIT 100`;
 
     const result = await pool.query(query, params);
     res.json({
