@@ -6,12 +6,7 @@ const getAPIURL = () => {
   const envUrl = import.meta.env.VITE_API_URL
   if (envUrl) return envUrl
 
-  // In development, API is on port 3000, frontend on 5000
-  if (window.location.port === '5000') {
-    return 'http://localhost:3000'
-  }
-
-  // In production, API is on same origin
+  // If no env URL, use same origin (for ngrok and production)
   return window.location.protocol + '//' + window.location.host
 }
 
