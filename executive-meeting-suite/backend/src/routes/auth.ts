@@ -35,7 +35,7 @@ router.post('/login', async (req: Request<{}, {}, LoginRequest>, res: Response) 
     }
 
     const result = await pool.query(
-      'SELECT id, email, password_hash, role, division_id, full_name FROM users WHERE email = $1 AND is_active = true',
+      'SELECT id, email, password_hash, role, division_id, full_name FROM users WHERE email = $1 AND status = \'ACTIVE\'',
       [email]
     );
 

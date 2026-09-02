@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { pool } from '../database';
 import { AuthRequest, authorize, authenticate } from '../middleware/auth';
 import nodemailer from 'nodemailer';
-import bcrypt from 'bcryptjs';
+import bcryptjs from 'bcryptjs';
 
 const router = Router();
 
@@ -299,6 +299,8 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
   try {
     const { actionItemIds, excelBase64, pdfBase64 } = req.body;
 
+    console.log('📧 Send emails request received for items:', actionItemIds);
+
     if (!actionItemIds || !Array.isArray(actionItemIds) || actionItemIds.length === 0) {
       return res.status(400).json({ error: 'No action items selected' });
     }
@@ -312,6 +314,8 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
       [actionItemIds]
     );
 
+    console.log('📬 Found items:', result.rows);
+
     if (result.rows.length === 0) {
       return res.status(400).json({ error: 'No action items found' });
     }
@@ -324,15 +328,6 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
     for (const item of items) {
       if (!itemsByPerson.has(item.email)) {
         itemsByPerson.set(item.email, []);
-
-        // Set password to demo123 for all responsible persons
-        const hashedPassword = await bcrypt.hash('demo123', 10);
-
-        // Update user password in database
-        await pool.query(
-          'UPDATE users SET password = $1 WHERE id = $2',
-          [hashedPassword, item.user_id]
-        );
       }
       itemsByPerson.get(item.email)!.push(item);
     }
@@ -354,6 +349,8 @@ router.post('/send-emails', authenticate, authorize(['CHIEF_OF_STAFF']), async (
         content: Buffer.from(pdfBase64, 'base64')
       });
     }
+
+    console.log('📎 Attachments prepared:', attachments.length);
 
     // Send email to each person with their assigned items
     for (const [email, personItems] of itemsByPerson.entries()) {
@@ -383,6 +380,8 @@ Best regards,
 Chief of Staff
         `;
 
+        console.log('✉️ Sending email to:', email);
+
         await transporter.sendMail({
           from: process.env.EMAIL_FROM || 'noreply@executivemeeting.local',
           to: email,
@@ -391,26 +390,28 @@ Chief of Staff
           attachments: attachments
         });
 
+        console.log('✅ Email sent to:', email);
+
         // Log email for each item
         for (const item of personItems) {
-          await pool.query(
-            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status) VALUES ($1, $2, $3, $4)',
-            [item.id, email, `Action Items: ${item.title}`, 'SENT']
-          );
+          try {
+            await pool.query(
+              'INSERT INTO email_logs (action_item_id, to_email, subject, status) VALUES ($1, $2, $3, $4)',
+              [item.id, email, `Action Items: ${item.title}`, 'SENT']
+            );
+          } catch (logErr) {
+            console.error('Error logging email:', logErr);
+          }
         }
 
         successCount++;
       } catch (err: any) {
         console.error('Email send error:', err);
         failureCount++;
-        for (const item of personItems) {
-          await pool.query(
-            'INSERT INTO email_logs (action_item_id, recipient_email, subject, status, error_message) VALUES ($1, $2, $3, $4, $5)',
-            [item.id, email, 'Action Items', 'FAILED', err.message]
-          ).catch(() => {});
-        }
       }
     }
+
+    console.log('📊 Send result - Success:', successCount, 'Failed:', failureCount);
 
     res.json({
       message: `Emails sent successfully`,
