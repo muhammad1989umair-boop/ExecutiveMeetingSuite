@@ -315,18 +315,25 @@ export default function MeetingDetail() {
     toast.success('Excel file downloaded!')
   }
 
-  const sendEmail = () => {
+  const sendEmail = async () => {
     if (actionItems.length === 0) {
       toast.error('No action items to send')
       return
     }
-    const uniqueOwners = [...new Set(actionItems.map(item => item.full_name))]
-    const owners = uniqueOwners.join(', ')
-    const subject = `Action Items from ${meeting?.title}`
-    const body = actionItems.map((item, idx) => `${idx + 1}. ${item.title} - Due: ${new Date(item.target_date).toLocaleDateString()} - Owner: ${item.full_name}`).join('%0A')
-    const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(actionItems.map((item, idx) => `${idx + 1}. ${item.title}\nDescription: ${item.description}\nDue: ${new Date(item.target_date).toLocaleDateString()}\nOwner: ${item.full_name}\nPriority: ${item.priority}\n`).join('\n'))}`
-    window.location.href = mailtoLink
-    toast.success('Email client opened')
+
+    try {
+      const actionItemIds = actionItems.map(item => item.id)
+      const response = await request('POST', '/action-items/send-emails', { actionItemIds })
+
+      if (response.successCount > 0) {
+        toast.success(`Emails sent to ${response.successCount} responsible person(s)!`)
+      }
+      if (response.failureCount > 0) {
+        toast.warning(`${response.failureCount} email(s) failed to send`)
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to send emails')
+    }
   }
 
   const sendWhatsApp = () => {

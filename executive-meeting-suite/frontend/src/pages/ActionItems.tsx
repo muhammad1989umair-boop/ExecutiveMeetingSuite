@@ -47,6 +47,8 @@ export default function ActionItems() {
   const [divisionalHeads, setDivisionalHeads] = useState<User[]>([])
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   const [statusUpdateData, setStatusUpdateData] = useState<{ comments: string; attachment: File | null }>({ comments: '', attachment: null })
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [sendingEmails, setSendingEmails] = useState(false)
   const { request, loading } = useApi()
   const { user } = useAuth()
 
