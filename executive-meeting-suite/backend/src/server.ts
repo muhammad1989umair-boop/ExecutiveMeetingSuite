@@ -24,31 +24,25 @@ const PORT = process.env.PORT || 5000;
 // ============================================================================
 
 // Security headers
-app.use(helmet({
-  contentSecurityPolicy: false,
-  hsts: { maxAge: 31536000, includeSubDomains: true },
-}));
+app.use(helmet());
 
-// CORS - Require explicit origin configuration
+// CORS
 const corsOrigin = process.env.CORS_ORIGIN;
 if (!corsOrigin) {
   console.error('FATAL: CORS_ORIGIN not configured');
   process.exit(1);
 }
-app.use(cors({
-  origin: corsOrigin,
-  credentials: true,
-}));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
 // Body parser
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Rate limiting
+// Rate limiting - strict for security
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: 'Too many requests, please try again later.',
+  max: 100,
+  message: 'Too many requests'
 });
 app.use('/api/', limiter);
 
@@ -70,7 +64,7 @@ async function initializeDatabase() {
     if (!tableCheck.rows[0].exists) {
       console.log('Creating database tables...');
       const fs = require('fs');
-      const schema = fs.readFileSync(path.join(__dirname, 'db/init.sql'), 'utf8');
+      const schema = fs.readFileSync(path.join(__dirname, 'database/schema.sql'), 'utf8');
       await pool.query(schema);
       console.log('✓ Database schema created');
     }
